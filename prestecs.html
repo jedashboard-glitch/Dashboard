@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Préstecs</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#00387C;--blue-mid:#1a54a0;--blue-light:#e8f0fb;
+  --green:#1a8c42;--green-bg:#d4edda;--green-txt:#155724;
+  --amber:#c96a10;--amber-bg:#ffe5d0;--amber-txt:#7c3d0f;
+  --red:#c0392b;--red-bg:#f8d7da;--red-txt:#721c24;
+  --bg:#FAF8F6;--white:#fff;--border:#dee2e6;--border-light:#eaeef2;
+  --text:#212529;--muted:#6c757d;
+  --sidebar:220px;--topbar:58px;--r:6px;
+  --shadow:0 1px 4px rgba(0,0,0,.1),0 4px 12px rgba(0,0,0,.06);
+}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+#app{display:flex;height:100vh}
+#sidebar{width:var(--sidebar);background:#fff;border-right:1px solid #EDE9E4;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+#logo-area{padding:14px 16px 12px;border-bottom:1px solid #EDE9E4;cursor:pointer}
+.logo-main{font-size:19px;font-weight:800;color:var(--blue);letter-spacing:-.4px;line-height:1.1}
+.logo-sub{font-size:10.5px;color:#6b7280;margin-top:3px;letter-spacing:.3px;font-style:italic}
+#nav{padding:10px 0;flex:1}
+.nav-section{padding:10px 14px 3px;font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:1.2px;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 16px;color:#374151;cursor:pointer;border-left:3px solid transparent;transition:all .15s;font-size:13px;user-select:none}
+.nav-item:hover{background:#f3f4f6;color:#111827}
+.nav-item.active{background:#eff6ff;color:var(--blue);border-left-color:var(--blue);font-weight:600}
+.nav-item .ico{font-size:15px;width:19px;text-align:center;flex-shrink:0}
+.nav-footer{padding:12px 14px;border-top:1px solid #EDE9E4;font-size:11px;color:#9ca3af}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#topbar{height:var(--topbar);background:var(--white);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;gap:12px;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+#topbar h1{font-size:17px;font-weight:700;color:var(--blue);flex:1}
+#content{flex:1;overflow-y:auto;padding:20px 24px}
+.kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+.kpi{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);padding:14px 18px;border-left:4px solid var(--blue)}
+.kpi.g{border-left-color:var(--green)}.kpi.a{border-left-color:var(--amber)}
+.kpi-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-bottom:6px}
+.kpi-val{font-size:22px;font-weight:800;color:var(--text)}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{background:#f8f9fa;text-align:left;padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);border-bottom:1px solid var(--border)}
+tbody td{padding:10px 14px;border-bottom:1px solid var(--border-light)}
+tbody tr:hover{background:var(--blue-light)}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.badge.ok{background:var(--green-bg);color:var(--green-txt)}
+.badge.pend{background:var(--amber-bg);color:var(--amber-txt)}
+.progress{width:100px;height:6px;background:var(--border-light);border-radius:4px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px}
+.progress-bar{height:100%;background:var(--green)}
+.row-act{display:flex;gap:6px}
+.icon-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:3px 6px;border-radius:4px}
+.icon-btn:hover{background:#eee}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r);border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--blue-mid)}
+.btn-secondary{background:#fff;color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{background:#f3f4f6}
+.btn-sm{padding:5px 10px;font-size:12px}
+.empty{text-align:center;padding:40px;color:var(--muted)}
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:100}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:10px;width:480px;max-width:92vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.3)}
+.modal.wide{width:720px}
+.modal-hdr{padding:18px 22px;border-bottom:1px solid var(--border-light);display:flex;align-items:center}
+.modal-hdr h3{flex:1;font-size:16px}
+.modal-body{padding:20px 22px;display:flex;flex-direction:column;gap:14px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.fg input,.fg select,.fg textarea{padding:9px 11px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fg-check{flex-direction:row;align-items:center;gap:8px}
+.modal-ftr{padding:16px 22px;border-top:1px solid var(--border-light);display:flex;justify-content:flex-end;gap:10px}
+.mini-input{width:90px;padding:5px 7px;border:1px solid var(--border);border-radius:4px;font-size:12px;text-align:right}
+#toast{position:fixed;bottom:22px;right:22px;z-index:999;display:flex;flex-direction:column;gap:8px}
+.toast{padding:11px 18px;border-radius:var(--r);font-size:13px;font-weight:600;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.25);animation:tin .3s ease}
+.toast.ok{background:var(--green)}.toast.err{background:var(--red)}.toast.inf{background:var(--blue)}
+@keyframes tin{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.2);border-radius:3px}
+</style>
+</head>
+<body>
+<div id="app">
+<nav id="sidebar">
+  <div id="logo-area" onclick="location.href='index.html'">
+    <div class="logo-main">📊 Dashboard</div>
+    <div class="logo-sub">Gestió financera</div>
+  </div>
+  <div id="nav">
+    <div class="nav-item" onclick="location.href='index.html'"><span class="ico">🏠</span> Inici</div>
+    <div class="nav-section">Facturació</div>
+    <div class="nav-item" onclick="location.href='factures-emeses.html'"><span class="ico">🧾</span> Factures emeses</div>
+    <div class="nav-item" onclick="location.href='factures-rebudes.html'"><span class="ico">📥</span> Factures rebudes</div>
+    <div class="nav-section">Personal i finançament</div>
+    <div class="nav-item" onclick="location.href='nomines.html'"><span class="ico">👥</span> Nòmines</div>
+    <div class="nav-item active" onclick="location.href='prestecs.html'"><span class="ico">🏦</span> Préstecs</div>
+    <div class="nav-section">Anàlisi</div>
+    <div class="nav-item" onclick="location.href='reports.html'"><span class="ico">📈</span> Reports</div>
+  </div>
+  <div class="nav-footer">Dashboard v1.0</div>
+</nav>
+<main id="main">
+  <header id="topbar">
+    <h1>Préstecs</h1>
+    <span id="user-email" style="font-size:12px;color:var(--muted);margin-right:4px"></span>
+    <button class="btn btn-secondary btn-sm" onclick="doLogout()">⏻ Sortir</button>
+  </header>
+  <div id="content">
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Capital viu total</div><div class="kpi-val" id="kpi-capital">—</div></div>
+      <div class="kpi a"><div class="kpi-label">Quotes pendents (import)</div><div class="kpi-val" id="kpi-pendent">—</div></div>
+      <div class="kpi g"><div class="kpi-label">Quota mensual total</div><div class="kpi-val" id="kpi-quota">—</div></div>
+    </div>
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="openModal()">+ Nou préstec</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr>
+          <th>Nom</th><th>Entitat</th><th class="num">Capital inicial</th><th>Data inici</th>
+          <th class="num">Quota mensual</th><th>Quotes</th><th></th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="empty" id="empty" style="display:none">Cap préstec registrat.</div>
+    </div>
+  </div>
+</main>
+</div>
+<div id="toast"></div>
+
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <div class="modal-hdr"><h3 id="modal-title">Nou préstec</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="m-id">
+      <div class="fg-row">
+        <div class="fg"><label>Nom del préstec</label><input type="text" id="m-nom"></div>
+        <div class="fg"><label>Entitat</label><input type="text" id="m-entitat"></div>
+      </div>
+      <div class="fg-row">
+        <div class="fg"><label>Capital inicial</label><input type="number" step="0.01" id="m-capital"></div>
+        <div class="fg"><label>Data inici</label><input type="date" id="m-data-inici"></div>
+      </div>
+      <div class="fg-row">
+        <div class="fg"><label>Termini (mesos)</label><input type="number" id="m-termini"></div>
+        <div class="fg"><label>Quota mensual</label><input type="number" step="0.01" id="m-quota"></div>
+      </div>
+      <div class="fg"><label>Notes</label><textarea id="m-notes" rows="2"></textarea></div>
+      <p id="m-hint" style="font-size:12px;color:var(--muted)"></p>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-secondary" id="btn-del" style="display:none;margin-right:auto;background:var(--red-bg);color:var(--red-txt)" onclick="delPrestec()">🗑 Eliminar</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel·lar</button>
+      <button class="btn btn-primary" onclick="savePrestec()">Desar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="quotes-modal-bg">
+  <div class="modal wide">
+    <div class="modal-hdr"><h3 id="quotes-title">Quotes</h3><button class="icon-btn" onclick="closeQuotesModal()">✕</button></div>
+    <div class="modal-body" style="max-height:60vh;overflow-y:auto">
+      <table>
+        <thead><tr>
+          <th>#</th><th>Data prevista</th><th class="num">Capital</th><th class="num">Interessos</th>
+          <th class="num">Total</th><th>Pagat</th><th>Data pagament</th>
+        </tr></thead>
+        <tbody id="quotes-tbody"></tbody>
+      </table>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-secondary" onclick="closeQuotesModal()">Tancar</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/neon-client.js"></script>
+<script>
+let prestecsRows = [];
+let quotesCache = {};
+if(requireAuth()) load();
+
+function fmtMoney(n){ return (Number(n)||0).toLocaleString('ca-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+function fmtDate(d){ if(!d) return '—'; return new Date(d+'T00:00:00').toLocaleDateString('ca-ES'); }
+function toast(msg,type='inf'){
+  const el=document.createElement('div'); el.className='toast '+type; el.textContent=msg;
+  document.getElementById('toast').appendChild(el); setTimeout(()=>el.remove(),3500);
+}
+
+async function load(){
+  try{
+    const [prestecs, quotes] = await Promise.all([
+      sbGet('prestecs','select=*&order=data_inici.desc'),
+      sbGet('prestec_quotes','select=*')
+    ]);
+    prestecsRows = prestecs;
+    quotesCache = {};
+    quotes.forEach(q=>{ (quotesCache[q.prestec_id] ||= []).push(q); });
+    render();
+  }catch(e){ toast('Error carregant: '+e.message,'err'); }
+}
+
+function render(){
+  let capitalViu = 0, pendentImport = 0, quotaMensualTotal = 0;
+  prestecsRows.forEach(p=>{
+    const qs = quotesCache[p.id] || [];
+    const pendents = qs.filter(q=>!q.pagat);
+    pendentImport += pendents.reduce((s,q)=>s+Number(q.import_total),0);
+    capitalViu += pendents.reduce((s,q)=>s+Number(q.import_capital),0);
+    if(pendents.length) quotaMensualTotal += Number(p.quota_mensual);
+  });
+  document.getElementById('kpi-capital').textContent = fmtMoney(capitalViu);
+  document.getElementById('kpi-pendent').textContent = fmtMoney(pendentImport);
+  document.getElementById('kpi-quota').textContent = fmtMoney(quotaMensualTotal);
+
+  const tbody = document.getElementById('tbody');
+  document.getElementById('empty').style.display = prestecsRows.length ? 'none':'block';
+  tbody.innerHTML = prestecsRows.map(p=>{
+    const qs = quotesCache[p.id] || [];
+    const pagades = qs.filter(q=>q.pagat).length;
+    const pct = qs.length ? Math.round(pagades/qs.length*100) : 0;
+    return `<tr>
+      <td>${p.nom||''}</td>
+      <td>${p.entitat||''}</td>
+      <td class="num">${fmtMoney(p.capital_inicial)}</td>
+      <td>${fmtDate(p.data_inici)}</td>
+      <td class="num">${fmtMoney(p.quota_mensual)}</td>
+      <td><span class="progress"><span class="progress-bar" style="width:${pct}%"></span></span>${pagades}/${qs.length}</td>
+      <td class="row-act">
+        <button class="icon-btn" onclick="openQuotesModal(${p.id})" title="Veure quotes">📋</button>
+        <button class="icon-btn" onclick="openModal(${p.id})" title="Editar">✏️</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openModal(id){
+  const r = id ? prestecsRows.find(x=>x.id===id) : null;
+  document.getElementById('modal-title').textContent = r ? 'Editar préstec' : 'Nou préstec';
+  document.getElementById('m-id').value = r ? r.id : '';
+  document.getElementById('m-nom').value = r ? (r.nom||'') : '';
+  document.getElementById('m-entitat').value = r ? (r.entitat||'') : '';
+  document.getElementById('m-capital').value = r ? r.capital_inicial : '';
+  document.getElementById('m-data-inici').value = r ? (r.data_inici||'') : todayStr();
+  document.getElementById('m-termini').value = r ? (r.termini_mesos||'') : '';
+  document.getElementById('m-quota').value = r ? r.quota_mensual : '';
+  document.getElementById('m-notes').value = r ? (r.notes||'') : '';
+  document.getElementById('m-hint').textContent = r
+    ? 'Editar el termini o la quota no regenera les quotes ja creades.'
+    : 'En crear el préstec es generaran automàticament les quotes mensuals segons el termini indicat.';
+  document.getElementById('btn-del').style.display = r ? 'inline-flex' : 'none';
+  document.getElementById('modal-bg').classList.add('show');
+}
+function closeModal(){ document.getElementById('modal-bg').classList.remove('show'); }
+
+async function savePrestec(){
+  const id = document.getElementById('m-id').value;
+  const data = {
+    nom: document.getElementById('m-nom').value.trim(),
+    entitat: document.getElementById('m-entitat').value.trim(),
+    capital_inicial: Number(document.getElementById('m-capital').value)||0,
+    data_inici: document.getElementById('m-data-inici').value || null,
+    termini_mesos: Number(document.getElementById('m-termini').value)||null,
+    quota_mensual: Number(document.getElementById('m-quota').value)||0,
+    notes: document.getElementById('m-notes').value.trim() || null
+  };
+  if(!data.nom){ toast('El nom és obligatori','err'); return; }
+  try{
+    if(id){
+      await sbPatch('prestecs', id, data);
+      toast('Préstec actualitzat','ok');
+    }else{
+      const [created] = await sbPost('prestecs', data);
+      if(data.termini_mesos && data.data_inici){
+        const quotesToCreate = [];
+        const start = new Date(data.data_inici+'T00:00:00');
+        for(let i=1;i<=data.termini_mesos;i++){
+          const d = new Date(start.getFullYear(), start.getMonth()+i, start.getDate());
+          quotesToCreate.push({
+            prestec_id: created.id,
+            data_prevista: toLocalDateStr(d),
+            import_capital: data.quota_mensual,
+            import_interessos: 0,
+            import_total: data.quota_mensual,
+            pagat: false
+          });
+        }
+        if(quotesToCreate.length) await sbPost('prestec_quotes', quotesToCreate);
+      }
+      toast('Préstec creat','ok');
+    }
+    closeModal();
+    await load();
+  }catch(e){ toast('Error desant: '+e.message,'err'); }
+}
+
+async function delPrestec(){
+  const id = document.getElementById('m-id').value;
+  if(!id || !confirm('Segur que vols eliminar aquest préstec i totes les seves quotes?')) return;
+  try{
+    await sbDel('prestecs', id);
+    toast('Préstec eliminat','ok');
+    closeModal();
+    await load();
+  }catch(e){ toast('Error eliminant: '+e.message,'err'); }
+}
+
+function openQuotesModal(prestecId){
+  const p = prestecsRows.find(x=>x.id===prestecId);
+  document.getElementById('quotes-title').textContent = 'Quotes — '+(p?p.nom:'');
+  renderQuotes(prestecId);
+  document.getElementById('quotes-modal-bg').classList.add('show');
+}
+function closeQuotesModal(){ document.getElementById('quotes-modal-bg').classList.remove('show'); }
+
+function renderQuotes(prestecId){
+  const qs = (quotesCache[prestecId] || []).slice().sort((a,b)=>a.data_prevista<b.data_prevista?-1:1);
+  const tbody = document.getElementById('quotes-tbody');
+  tbody.innerHTML = qs.map((q,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td>${fmtDate(q.data_prevista)}</td>
+      <td class="num"><input class="mini-input" type="number" step="0.01" value="${q.import_capital}" onchange="updateQuoteSplit(${q.id},this)" data-field="capital"></td>
+      <td class="num"><input class="mini-input" type="number" step="0.01" value="${q.import_interessos}" onchange="updateQuoteSplit(${q.id},this)" data-field="interessos"></td>
+      <td class="num"><strong id="qtotal-${q.id}">${fmtMoney(q.import_total)}</strong></td>
+      <td><input type="checkbox" ${q.pagat?'checked':''} onchange="updateQuotePagat(${q.id},${prestecId},this)"></td>
+      <td><input type="date" style="padding:5px 7px;font-size:12px" value="${q.data_pagament||''}" onchange="updateQuoteDataPagament(${q.id},${prestecId},this)"></td>
+    </tr>`).join('');
+}
+
+async function updateQuoteSplit(quoteId, el){
+  const tr = el.closest('tr');
+  const capitalEl = tr.querySelector('[data-field="capital"]');
+  const interessosEl = tr.querySelector('[data-field="interessos"]');
+  const capital = Number(capitalEl.value)||0;
+  const interessos = Number(interessosEl.value)||0;
+  const total = Math.round((capital+interessos)*100)/100;
+  document.getElementById('qtotal-'+quoteId).textContent = fmtMoney(total);
+  try{
+    await sbPatch('prestec_quotes', quoteId, { import_capital:capital, import_interessos:interessos, import_total:total });
+    for(const pid in quotesCache){
+      const q = quotesCache[pid].find(x=>x.id===quoteId);
+      if(q){ q.import_capital=capital; q.import_interessos=interessos; q.import_total=total; }
+    }
+    render();
+  }catch(e){ toast('Error desant quota: '+e.message,'err'); }
+}
+
+async function updateQuotePagat(quoteId, prestecId, el){
+  const pagat = el.checked;
+  const tr = el.closest('tr');
+  const dataInput = tr.querySelector('input[type=date]');
+  if(pagat && !dataInput.value) dataInput.value = todayStr();
+  try{
+    await sbPatch('prestec_quotes', quoteId, { pagat, data_pagament: pagat ? dataInput.value : null });
+    const q = quotesCache[prestecId].find(x=>x.id===quoteId);
+    if(q){ q.pagat=pagat; q.data_pagament = pagat ? dataInput.value : null; }
+    render();
+    renderQuotes(prestecId);
+  }catch(e){ toast('Error desant quota: '+e.message,'err'); }
+}
+
+async function updateQuoteDataPagament(quoteId, prestecId, el){
+  try{
+    await sbPatch('prestec_quotes', quoteId, { data_pagament: el.value || null });
+    const q = quotesCache[prestecId].find(x=>x.id===quoteId);
+    if(q) q.data_pagament = el.value || null;
+  }catch(e){ toast('Error desant data: '+e.message,'err'); }
+}
+</script>
+</body>
+</html>

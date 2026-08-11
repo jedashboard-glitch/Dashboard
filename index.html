@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#00387C;--blue-mid:#1a54a0;--blue-light:#e8f0fb;--blue-dim:#d0e0f5;
+  --green:#1a8c42;--green-bg:#d4edda;--green-txt:#155724;
+  --yellow:#c79500;--yellow-bg:#fff3cd;--yellow-txt:#856404;
+  --amber:#c96a10;--amber-bg:#ffe5d0;--amber-txt:#7c3d0f;
+  --red:#c0392b;--red-bg:#f8d7da;--red-txt:#721c24;
+  --bg:#FAF8F6;--white:#fff;--border:#dee2e6;--border-light:#eaeef2;
+  --text:#212529;--muted:#6c757d;
+  --sidebar:220px;--topbar:58px;--r:6px;
+  --shadow:0 1px 4px rgba(0,0,0,.1),0 4px 12px rgba(0,0,0,.06);
+}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+#app{display:flex;height:100vh}
+#sidebar{width:var(--sidebar);background:#fff;border-right:1px solid #EDE9E4;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+#logo-area{padding:14px 16px 12px;border-bottom:1px solid #EDE9E4;cursor:pointer}
+.logo-main{font-size:19px;font-weight:800;color:var(--blue);letter-spacing:-.4px;line-height:1.1}
+.logo-sub{font-size:10.5px;color:#6b7280;margin-top:3px;letter-spacing:.3px;font-style:italic}
+#nav{padding:10px 0;flex:1}
+.nav-section{padding:10px 14px 3px;font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:1.2px;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 16px;color:#374151;cursor:pointer;border-left:3px solid transparent;transition:all .15s;font-size:13px;user-select:none}
+.nav-item:hover{background:#f3f4f6;color:#111827}
+.nav-item.active{background:#eff6ff;color:var(--blue);border-left-color:var(--blue);font-weight:600}
+.nav-item .ico{font-size:15px;width:19px;text-align:center;flex-shrink:0}
+.nav-footer{padding:12px 14px;border-top:1px solid #EDE9E4;font-size:11px;color:#9ca3af}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#topbar{height:var(--topbar);background:var(--white);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;gap:12px;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+#topbar h1{font-size:17px;font-weight:700;color:var(--blue);flex:1}
+#topbar .data{font-size:13px;color:var(--muted)}
+#content{flex:1;overflow-y:auto;padding:20px 24px}
+.welcome{background:linear-gradient(135deg,var(--blue) 0%,var(--blue-mid) 100%);border-radius:10px;padding:24px 28px;color:#fff;margin-bottom:20px;display:flex;align-items:center;gap:20px}
+.welcome-logo{font-size:32px}
+.welcome-text{flex:1}
+.welcome-text h2{font-size:20px;font-weight:700;margin-bottom:4px}
+.welcome-text p{font-size:13px;color:rgba(255,255,255,.75)}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.kpi{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);padding:16px 18px;border-left:4px solid var(--blue);cursor:pointer;transition:transform .15s,box-shadow .15s;text-decoration:none;display:block}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.12)}
+.kpi.g{border-left-color:var(--green)}.kpi.y{border-left-color:var(--yellow)}
+.kpi.a{border-left-color:var(--amber)}.kpi.r{border-left-color:var(--red)}
+.kpi-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-bottom:6px}
+.kpi-val{font-size:24px;font-weight:800;color:var(--text);line-height:1;margin-bottom:4px}
+.kpi-sub{font-size:11px;color:var(--muted)}
+.dash-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow)}
+.card-hdr{padding:14px 18px;border-bottom:1px solid var(--border-light);display:flex;align-items:center;gap:8px}
+.card-hdr h3{font-size:14px;font-weight:700;color:var(--text);flex:1}
+.card-hdr a{font-size:12px;color:var(--blue);text-decoration:none;font-weight:600}
+.card-hdr a:hover{text-decoration:underline}
+.alert-item{display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--border-light);font-size:13px;cursor:pointer;transition:background .12s}
+.alert-item:hover{background:var(--blue-light)}
+.alert-item:last-child{border-bottom:none}
+.alert-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-r{background:var(--red)}.dot-a{background:var(--amber)}.dot-g{background:var(--green)}
+.alert-main{flex:1}
+.alert-nom{font-weight:600}
+.alert-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.alert-amt{font-weight:700;font-size:13px;text-align:right;white-space:nowrap}
+.modules-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+.mod-card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);padding:18px 16px;text-align:center;cursor:pointer;transition:all .15s;text-decoration:none;display:block;border-top:3px solid transparent}
+.mod-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.12);border-top-color:var(--blue)}
+.mod-card .ico{font-size:28px;margin-bottom:8px}
+.mod-card .nom{font-size:13px;font-weight:700;color:var(--text)}
+.no-alerts{text-align:center;padding:28px;color:var(--muted);font-size:13px}
+#toast{position:fixed;bottom:22px;right:22px;z-index:999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{padding:11px 18px;border-radius:var(--r);font-size:13px;font-weight:600;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.25);animation:tin .3s ease;pointer-events:auto}
+.toast.ok{background:var(--green)}.toast.err{background:var(--red)}.toast.inf{background:var(--blue)}
+@keyframes tin{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,.15);border-top-color:var(--blue);border-radius:50%;animation:rot .6s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.2);border-radius:3px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 15px;border-radius:var(--r);border:none;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;white-space:nowrap}
+.btn-secondary{background:#fff;color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{background:#f3f4f6}
+.btn-sm{padding:5px 10px;font-size:12px}
+</style>
+</head>
+<body>
+<div id="app">
+
+<nav id="sidebar">
+  <div id="logo-area" onclick="location.href='index.html'">
+    <div class="logo-main">📊 Dashboard</div>
+    <div class="logo-sub">Gestió financera</div>
+  </div>
+  <div id="nav">
+    <div class="nav-item active" onclick="location.href='index.html'"><span class="ico">🏠</span> Inici</div>
+    <div class="nav-section">Facturació</div>
+    <div class="nav-item" onclick="location.href='factures-emeses.html'"><span class="ico">🧾</span> Factures emeses</div>
+    <div class="nav-item" onclick="location.href='factures-rebudes.html'"><span class="ico">📥</span> Factures rebudes</div>
+    <div class="nav-section">Personal i finançament</div>
+    <div class="nav-item" onclick="location.href='nomines.html'"><span class="ico">👥</span> Nòmines</div>
+    <div class="nav-item" onclick="location.href='prestecs.html'"><span class="ico">🏦</span> Préstecs</div>
+    <div class="nav-section">Anàlisi</div>
+    <div class="nav-item" onclick="location.href='reports.html'"><span class="ico">📈</span> Reports</div>
+  </div>
+  <div class="nav-footer">Dashboard v1.0</div>
+</nav>
+
+<main id="main">
+  <header id="topbar">
+    <h1>Inici</h1>
+    <span class="data" id="data-avui"></span>
+    <button class="btn btn-sm btn-secondary" onclick="init()">↻ Actualitzar</button>
+    <span id="user-email" style="font-size:12px;color:var(--muted);margin-right:4px"></span>
+    <button class="btn btn-sm" style="background:#f8d7da;color:#721c24;border:1px solid #f5c6cb" onclick="doLogout()">⏻ Sortir</button>
+  </header>
+  <div id="content">
+
+    <div class="welcome">
+      <div class="welcome-logo">📊</div>
+      <div class="welcome-text">
+        <h2>Benvingut al Dashboard</h2>
+        <p id="welcome-sub">Carregant resum...</p>
+      </div>
+    </div>
+
+    <div class="kpi-grid" id="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Ingressos mes</div><div class="kpi-val">—</div></div>
+      <div class="kpi r"><div class="kpi-label">Despeses mes</div><div class="kpi-val">—</div></div>
+      <div class="kpi g"><div class="kpi-label">Resultat mes</div><div class="kpi-val">—</div></div>
+      <div class="kpi a"><div class="kpi-label">Pendent net</div><div class="kpi-val">—</div></div>
+    </div>
+
+    <div class="modules-grid">
+      <a class="mod-card" href="factures-emeses.html"><div class="ico">🧾</div><div class="nom">Factures emeses</div></a>
+      <a class="mod-card" href="factures-rebudes.html"><div class="ico">📥</div><div class="nom">Factures rebudes</div></a>
+      <a class="mod-card" href="nomines.html"><div class="ico">👥</div><div class="nom">Nòmines</div></a>
+      <a class="mod-card" href="prestecs.html"><div class="ico">🏦</div><div class="nom">Préstecs</div></a>
+      <a class="mod-card" href="reports.html"><div class="ico">📈</div><div class="nom">Reports</div></a>
+    </div>
+
+    <div class="dash-row">
+      <div class="card">
+        <div class="card-hdr"><h3>Pendent de cobrar</h3><a href="factures-emeses.html">Veure totes →</a></div>
+        <div id="list-cobrar"><div class="no-alerts">Carregant...</div></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><h3>Pendent de pagar</h3></div>
+        <div id="list-pagar"><div class="no-alerts">Carregant...</div></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+</div>
+<div id="toast"></div>
+
+<script src="js/neon-client.js"></script>
+<script>
+if(requireAuth()){
+  document.getElementById('data-avui').textContent = new Date().toLocaleDateString('ca-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  init();
+}
+
+function fmtMoney(n){ return (Number(n)||0).toLocaleString('ca-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+function fmtDate(d){ if(!d) return '—'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('ca-ES'); }
+function toast(msg,type='inf'){
+  const el=document.createElement('div');
+  el.className='toast '+type; el.textContent=msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(()=>el.remove(),3500);
+}
+
+async function init(){
+  try{
+    const now = new Date();
+    const y = now.getFullYear(), m = now.getMonth();
+    const first = toLocalDateStr(new Date(y,m,1));
+    const last = toLocalDateStr(new Date(y,m+1,0));
+
+    const [emeses, rebudes, nomines, quotes] = await Promise.all([
+      sbGet('factures_emeses','select=*'),
+      sbGet('factures_rebudes','select=*'),
+      sbGet('nomines','select=*'),
+      sbGet('prestec_quotes','select=*')
+    ]);
+
+    const inMonth = d => d>=first && d<=last;
+
+    const ingressosMes = emeses.filter(f=>inMonth(f.data)).reduce((s,f)=>s+Number(f.base),0);
+    const despesesRebudesMes = rebudes.filter(f=>inMonth(f.data)).reduce((s,f)=>s+Number(f.base),0);
+    const despesesNominesMes = nomines.filter(f=>inMonth(f.data)).reduce((s,f)=>s+Number(f.import_brut)+Number(f.ss_empresa),0);
+    const despesesInteressosMes = quotes.filter(q=>inMonth(q.data_prevista)).reduce((s,q)=>s+Number(q.import_interessos),0);
+    const despesesMes = despesesRebudesMes + despesesNominesMes + despesesInteressosMes;
+    const resultatMes = ingressosMes - despesesMes;
+
+    const pendentCobrar = emeses.filter(f=>!f.cobrat).reduce((s,f)=>s+Number(f.total),0);
+    const pendentPagar = rebudes.filter(f=>!f.pagat).reduce((s,f)=>s+Number(f.total),0)
+      + nomines.filter(f=>!f.pagat).reduce((s,f)=>s+Number(f.import_net),0)
+      + quotes.filter(q=>!q.pagat).reduce((s,q)=>s+Number(q.import_total),0);
+    const pendentNet = pendentCobrar - pendentPagar;
+
+    const kpis = document.querySelectorAll('#kpi-grid .kpi');
+    kpis[0].querySelector('.kpi-val').textContent = fmtMoney(ingressosMes);
+    kpis[1].querySelector('.kpi-val').textContent = fmtMoney(despesesMes);
+    kpis[2].querySelector('.kpi-val').textContent = fmtMoney(resultatMes);
+    kpis[3].querySelector('.kpi-val').textContent = fmtMoney(pendentNet);
+
+    document.getElementById('welcome-sub').textContent =
+      `Aquest mes: ${fmtMoney(ingressosMes)} d'ingressos, resultat ${fmtMoney(resultatMes)}.`;
+
+    // Pendent de cobrar
+    const cobrarItems = emeses.filter(f=>!f.cobrat).sort((a,b)=>a.data<b.data?-1:1).slice(0,8);
+    renderList('list-cobrar', cobrarItems, f=>({
+      nom: f.client || f.concepte, sub: fmtDate(f.data), amt: fmtMoney(f.total), dot:'dot-g'
+    }), 'factures-emeses.html');
+
+    // Pendent de pagar (combinat)
+    const pagarItems = [
+      ...rebudes.filter(f=>!f.pagat).map(f=>({data:f.data,nom:f.proveidor||f.concepte,amt:f.total,tipus:'Factura'})),
+      ...nomines.filter(f=>!f.pagat).map(f=>({data:f.data,nom:f.empleat,amt:f.import_net,tipus:'Nòmina'})),
+      ...quotes.filter(q=>!q.pagat).map(q=>({data:q.data_prevista,nom:'Quota préstec',amt:q.import_total,tipus:'Préstec'}))
+    ].sort((a,b)=>a.data<b.data?-1:1).slice(0,8);
+    renderList('list-pagar', pagarItems, f=>({
+      nom: f.nom, sub: `${f.tipus} · ${fmtDate(f.data)}`, amt: fmtMoney(f.amt), dot:'dot-r'
+    }));
+
+  }catch(e){
+    console.error(e);
+    toast('Error carregant dades: '+e.message,'err');
+  }
+}
+
+function renderList(id, items, mapFn, href){
+  const el = document.getElementById(id);
+  if(!items.length){ el.innerHTML = '<div class="no-alerts">Cap element pendent 🎉</div>'; return; }
+  el.innerHTML = items.map(raw=>{
+    const it = mapFn(raw);
+    return `<div class="alert-item" ${href?`onclick="location.href='${href}'"`:''}>
+      <span class="alert-dot ${it.dot}"></span>
+      <div class="alert-main"><div class="alert-nom">${it.nom}</div><div class="alert-sub">${it.sub}</div></div>
+      <div class="alert-amt">${it.amt}</div>
+    </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>

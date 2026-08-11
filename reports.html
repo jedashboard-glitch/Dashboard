@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Reports</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#00387C;--blue-mid:#1a54a0;--blue-light:#e8f0fb;
+  --green:#1a8c42;--green-bg:#d4edda;--green-txt:#155724;
+  --amber:#c96a10;--amber-bg:#ffe5d0;--amber-txt:#7c3d0f;
+  --red:#c0392b;--red-bg:#f8d7da;--red-txt:#721c24;
+  --bg:#FAF8F6;--white:#fff;--border:#dee2e6;--border-light:#eaeef2;
+  --text:#212529;--muted:#6c757d;
+  --sidebar:220px;--topbar:58px;--r:6px;
+  --shadow:0 1px 4px rgba(0,0,0,.1),0 4px 12px rgba(0,0,0,.06);
+}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+#app{display:flex;height:100vh}
+#sidebar{width:var(--sidebar);background:#fff;border-right:1px solid #EDE9E4;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+#logo-area{padding:14px 16px 12px;border-bottom:1px solid #EDE9E4;cursor:pointer}
+.logo-main{font-size:19px;font-weight:800;color:var(--blue);letter-spacing:-.4px;line-height:1.1}
+.logo-sub{font-size:10.5px;color:#6b7280;margin-top:3px;letter-spacing:.3px;font-style:italic}
+#nav{padding:10px 0;flex:1}
+.nav-section{padding:10px 14px 3px;font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:1.2px;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 16px;color:#374151;cursor:pointer;border-left:3px solid transparent;transition:all .15s;font-size:13px;user-select:none}
+.nav-item:hover{background:#f3f4f6;color:#111827}
+.nav-item.active{background:#eff6ff;color:var(--blue);border-left-color:var(--blue);font-weight:600}
+.nav-item .ico{font-size:15px;width:19px;text-align:center;flex-shrink:0}
+.nav-footer{padding:12px 14px;border-top:1px solid #EDE9E4;font-size:11px;color:#9ca3af}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#topbar{height:var(--topbar);background:var(--white);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;gap:12px;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+#topbar h1{font-size:17px;font-weight:700;color:var(--blue);flex:1}
+#content{flex:1;overflow-y:auto;padding:20px 24px}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.toolbar select{padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit}
+.tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border)}
+.tab{padding:10px 18px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:18px}
+.card-hdr{padding:14px 18px;border-bottom:1px solid var(--border-light)}
+.card-hdr h3{font-size:14px;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+thead th{background:#f8f9fa;text-align:right;padding:8px 10px;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
+thead th:first-child,tbody td:first-child{text-align:left}
+tbody td{padding:7px 10px;border-bottom:1px solid var(--border-light);text-align:right;white-space:nowrap}
+tbody tr.total td{font-weight:800;border-top:2px solid var(--border)}
+tbody tr.result td{font-weight:800;color:var(--blue);background:var(--blue-light)}
+tbody tr.section td:first-child{font-weight:700;color:var(--muted);padding-top:12px}
+.pos{color:var(--green-txt)}.neg{color:var(--red-txt)}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.kpi{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);padding:14px 18px;border-left:4px solid var(--blue)}
+.kpi.g{border-left-color:var(--green)}.kpi.a{border-left-color:var(--amber)}.kpi.r{border-left-color:var(--red)}
+.kpi-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-bottom:6px}
+.kpi-val{font-size:20px;font-weight:800;color:var(--text)}
+.bep-bar{position:relative;height:34px;background:var(--border-light);border-radius:6px;overflow:hidden;margin:10px 0}
+.bep-fill{position:absolute;left:0;top:0;height:100%;background:linear-gradient(90deg,var(--amber),var(--green))}
+.bep-marker{position:absolute;top:0;height:100%;width:2px;background:var(--blue)}
+.bep-label{position:absolute;top:-20px;font-size:11px;color:var(--blue);font-weight:700;white-space:nowrap;transform:translateX(-50%)}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.2);border-radius:3px}
+#toast{position:fixed;bottom:22px;right:22px;z-index:999;display:flex;flex-direction:column;gap:8px}
+.toast{padding:11px 18px;border-radius:var(--r);font-size:13px;font-weight:600;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.25);animation:tin .3s ease}
+.toast.ok{background:var(--green)}.toast.err{background:var(--red)}.toast.inf{background:var(--blue)}
+@keyframes tin{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+.muted-note{font-size:11.5px;color:var(--muted);padding:10px 18px}
+</style>
+</head>
+<body>
+<div id="app">
+<nav id="sidebar">
+  <div id="logo-area" onclick="location.href='index.html'">
+    <div class="logo-main">📊 Dashboard</div>
+    <div class="logo-sub">Gestió financera</div>
+  </div>
+  <div id="nav">
+    <div class="nav-item" onclick="location.href='index.html'"><span class="ico">🏠</span> Inici</div>
+    <div class="nav-section">Facturació</div>
+    <div class="nav-item" onclick="location.href='factures-emeses.html'"><span class="ico">🧾</span> Factures emeses</div>
+    <div class="nav-item" onclick="location.href='factures-rebudes.html'"><span class="ico">📥</span> Factures rebudes</div>
+    <div class="nav-section">Personal i finançament</div>
+    <div class="nav-item" onclick="location.href='nomines.html'"><span class="ico">👥</span> Nòmines</div>
+    <div class="nav-item" onclick="location.href='prestecs.html'"><span class="ico">🏦</span> Préstecs</div>
+    <div class="nav-section">Anàlisi</div>
+    <div class="nav-item active" onclick="location.href='reports.html'"><span class="ico">📈</span> Reports</div>
+  </div>
+  <div class="nav-footer">Dashboard v1.0</div>
+</nav>
+<main id="main">
+  <header id="topbar">
+    <h1>Reports</h1>
+    <span id="user-email" style="font-size:12px;color:var(--muted);margin-right:4px"></span>
+    <button class="btn btn-secondary btn-sm" onclick="doLogout()" style="padding:5px 10px;font-size:12px;border-radius:6px;background:#fff;border:1px solid var(--border);cursor:pointer">⏻ Sortir</button>
+  </header>
+  <div id="content">
+    <div class="toolbar">
+      <select id="f-any" onchange="renderAll()"></select>
+    </div>
+    <div class="tabs">
+      <div class="tab active" data-tab="pl" onclick="showTab('pl')">Compte de resultats (P&amp;L)</div>
+      <div class="tab" data-tab="tresoreria" onclick="showTab('tresoreria')">Tresoreria</div>
+      <div class="tab" data-tab="puntmort" onclick="showTab('puntmort')">Punt mort</div>
+    </div>
+
+    <div id="tab-pl"></div>
+    <div id="tab-tresoreria" style="display:none"></div>
+    <div id="tab-puntmort" style="display:none"></div>
+  </div>
+</main>
+</div>
+<div id="toast"></div>
+
+<script src="js/neon-client.js"></script>
+<script>
+const MESOS = ['Gen','Feb','Mar','Abr','Mai','Jun','Jul','Ago','Set','Oct','Nov','Des'];
+let emeses=[], rebudes=[], nomines=[], quotes=[];
+
+if(requireAuth()) load();
+
+function fmtMoney(n){ return (Number(n)||0).toLocaleString('ca-ES',{minimumFractionDigits:0,maximumFractionDigits:0})+' €'; }
+function fmtMoney2(n){ return (Number(n)||0).toLocaleString('ca-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+function toast(msg,type='inf'){
+  const el=document.createElement('div'); el.className='toast '+type; el.textContent=msg;
+  document.getElementById('toast').appendChild(el); setTimeout(()=>el.remove(),3500);
+}
+
+async function load(){
+  try{
+    [emeses, rebudes, nomines, quotes] = await Promise.all([
+      sbGet('factures_emeses','select=*'),
+      sbGet('factures_rebudes','select=*'),
+      sbGet('nomines','select=*'),
+      sbGet('prestec_quotes','select=*')
+    ]);
+    fillAnys();
+    renderAll();
+  }catch(e){ toast('Error carregant: '+e.message,'err'); }
+}
+
+function fillAnys(){
+  const all = [...emeses.map(r=>r.data), ...rebudes.map(r=>r.data), ...nomines.map(r=>r.data), ...quotes.map(r=>r.data_prevista)];
+  const anys = [...new Set(all.filter(Boolean).map(d=>d.slice(0,4)))].sort((a,b)=>b-a);
+  const thisYear = String(new Date().getFullYear());
+  if(!anys.includes(thisYear)) anys.unshift(thisYear);
+  document.getElementById('f-any').innerHTML = anys.map(a=>`<option value="${a}">${a}</option>`).join('');
+  document.getElementById('f-any').value = thisYear;
+}
+
+function showTab(tab){
+  ['pl','tresoreria','puntmort'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display = t===tab ? 'block':'none';
+    document.querySelector(`.tab[data-tab="${t}"]`).classList.toggle('active', t===tab);
+  });
+}
+
+function monthlySums(rows, dateField, valueFn, year){
+  const sums = Array(12).fill(0);
+  rows.forEach(r=>{
+    const d = r[dateField];
+    if(!d || !d.startsWith(year)) return;
+    const m = Number(d.slice(5,7))-1;
+    sums[m] += valueFn(r);
+  });
+  return sums;
+}
+const sum = arr => arr.reduce((a,b)=>a+b,0);
+const addArr = (a,b) => a.map((v,i)=>v+b[i]);
+const subArr = (a,b) => a.map((v,i)=>v-b[i]);
+
+function renderAll(){
+  const year = document.getElementById('f-any').value;
+  renderPL(year);
+  renderTresoreria(year);
+  renderPuntMort(year);
+}
+
+function rowHTML(label, arr, opts={}){
+  const cls = opts.cls || '';
+  const fmt = opts.money2 ? fmtMoney2 : fmtMoney;
+  const cells = arr.map(v=>`<td class="${v<0?'neg':''}">${fmt(v)}</td>`).join('');
+  return `<tr class="${cls}"><td>${label}</td>${cells}<td>${fmt(sum(arr))}</td></tr>`;
+}
+
+function renderPL(year){
+  const ingressos = monthlySums(emeses,'data', r=>Number(r.base), year);
+  const costVar = monthlySums(rebudes,'data', r=>r.tipus_cost==='variable'?Number(r.base):0, year);
+  const costFix = monthlySums(rebudes,'data', r=>r.tipus_cost==='fix'?Number(r.base):0, year);
+  const personal = monthlySums(nomines,'data', r=>Number(r.import_brut)+Number(r.ss_empresa), year);
+  const financeres = monthlySums(quotes,'data_prevista', r=>Number(r.import_interessos), year);
+  const totalDespeses = addArr(addArr(addArr(costVar,costFix),personal),financeres);
+  const resultat = subArr(ingressos, totalDespeses);
+  const margeContrib = subArr(ingressos, costVar);
+
+  const head = '<th></th>'+MESOS.map(m=>`<th>${m}</th>`).join('')+'<th>Total</th>';
+  document.getElementById('tab-pl').innerHTML = `
+    <div class="card">
+      <div class="card-hdr"><h3>Compte de resultats ${year} (base imposable, criteri de meritació)</h3></div>
+      <div style="overflow-x:auto">
+      <table>
+        <thead><tr>${head}</tr></thead>
+        <tbody>
+          ${rowHTML('Ingressos', ingressos)}
+          <tr class="section"><td>Costos variables</td>${MESOS.map(()=>'<td></td>').join('')}<td></td></tr>
+          ${rowHTML('Compres i serveis variables', costVar.map(v=>-v))}
+          ${rowHTML('Marge de contribució', margeContrib, {cls:'total'})}
+          <tr class="section"><td>Costos fixos</td>${MESOS.map(()=>'<td></td>').join('')}<td></td></tr>
+          ${rowHTML('Compres i serveis fixos', costFix.map(v=>-v))}
+          ${rowHTML('Personal (brut + SS empresa)', personal.map(v=>-v))}
+          ${rowHTML('Despeses financeres (interessos)', financeres.map(v=>-v))}
+          ${rowHTML('Resultat (EBIT)', resultat, {cls:'result'})}
+        </tbody>
+      </table>
+      </div>
+      <p class="muted-note">Els imports es basen en la base imposable (sense IVA) i la data de la factura/nòmina/quota, no en la data de cobrament o pagament.</p>
+    </div>`;
+}
+
+function renderTresoreria(year){
+  const cobraments = monthlySums(emeses.filter(r=>r.cobrat),'data_cobrament', r=>Number(r.total), year);
+  const pagFactures = monthlySums(rebudes.filter(r=>r.pagat),'data_pagament', r=>Number(r.total), year);
+  const pagNomines = monthlySums(nomines.filter(r=>r.pagat),'data_pagament', r=>Number(r.import_net), year);
+  const pagQuotes = monthlySums(quotes.filter(r=>r.pagat),'data_pagament', r=>Number(r.import_total), year);
+  const totalPagaments = addArr(addArr(pagFactures,pagNomines),pagQuotes);
+  const saldoMes = subArr(cobraments, totalPagaments);
+  const saldoAcum = [];
+  saldoMes.reduce((acc,v,i)=>{ const t=acc+v; saldoAcum[i]=t; return t; },0);
+
+  const head = '<th></th>'+MESOS.map(m=>`<th>${m}</th>`).join('')+'<th>Total</th>';
+  document.getElementById('tab-tresoreria').innerHTML = `
+    <div class="card">
+      <div class="card-hdr"><h3>Moviments de tresoreria ${year} (criteri de caixa)</h3></div>
+      <div style="overflow-x:auto">
+      <table>
+        <thead><tr>${head}</tr></thead>
+        <tbody>
+          ${rowHTML('Cobraments (factures emeses)', cobraments)}
+          <tr class="section"><td>Pagaments</td>${MESOS.map(()=>'<td></td>').join('')}<td></td></tr>
+          ${rowHTML('Factures rebudes', pagFactures.map(v=>-v))}
+          ${rowHTML('Nòmines', pagNomines.map(v=>-v))}
+          ${rowHTML('Quotes de préstecs', pagQuotes.map(v=>-v))}
+          ${rowHTML('Saldo del mes', saldoMes, {cls:'total'})}
+          ${rowHTML('Saldo acumulat', saldoAcum, {cls:'result'})}
+        </tbody>
+      </table>
+      </div>
+      <p class="muted-note">El saldo acumulat és relatiu als moviments registrats aquest any (no inclou el saldo bancari inicial).</p>
+    </div>`;
+}
+
+function renderPuntMort(year){
+  const ingressosAny = sum(monthlySums(emeses,'data', r=>Number(r.base), year));
+  const costVarAny = sum(monthlySums(rebudes,'data', r=>r.tipus_cost==='variable'?Number(r.base):0, year));
+  const costFixAny = sum(monthlySums(rebudes,'data', r=>r.tipus_cost==='fix'?Number(r.base):0, year));
+  const personalAny = sum(monthlySums(nomines,'data', r=>Number(r.import_brut)+Number(r.ss_empresa), year));
+  const financeresAny = sum(monthlySums(quotes,'data_prevista', r=>Number(r.import_interessos), year));
+  const costosFixosAny = costFixAny + personalAny + financeresAny;
+  const margeContribAny = ingressosAny - costVarAny;
+  const marge_pct = ingressosAny ? margeContribAny/ingressosAny : 0;
+  const puntMort = marge_pct>0 ? costosFixosAny/marge_pct : null;
+  const distancia = puntMort!==null ? ingressosAny - puntMort : null;
+
+  const maxScale = Math.max(ingressosAny, puntMort||0)*1.15 || 1;
+  const pctIngressos = Math.min(100, ingressosAny/maxScale*100);
+  const pctPuntMort = Math.min(100, (puntMort||0)/maxScale*100);
+
+  document.getElementById('tab-puntmort').innerHTML = `
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Ingressos ${year}</div><div class="kpi-val">${fmtMoney(ingressosAny)}</div></div>
+      <div class="kpi a"><div class="kpi-label">Costos fixos ${year}</div><div class="kpi-val">${fmtMoney(costosFixosAny)}</div></div>
+      <div class="kpi g"><div class="kpi-label">Marge de contribució</div><div class="kpi-val">${(marge_pct*100).toFixed(1)}%</div></div>
+      <div class="kpi ${distancia!==null && distancia>=0 ? 'g':'r'}"><div class="kpi-label">Punt mort (ingressos)</div><div class="kpi-val">${puntMort!==null?fmtMoney(puntMort):'—'}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><h3>Distància al punt mort — ${year}</h3></div>
+      <div style="padding:24px 22px">
+        ${puntMort===null ? '<p class="muted-note">No es pot calcular: el marge de contribució és nul o negatiu.</p>' : `
+        <div class="bep-bar">
+          <div class="bep-fill" style="width:${pctIngressos}%"></div>
+          <div class="bep-marker" style="left:${pctPuntMort}%"><span class="bep-label" style="left:0">Punt mort: ${fmtMoney(puntMort)}</span></div>
+        </div>
+        <p style="font-size:13px;margin-top:26px">
+          Amb un marge de contribució del <strong>${(marge_pct*100).toFixed(1)}%</strong> i uns costos fixos anuals de <strong>${fmtMoney(costosFixosAny)}</strong>,
+          calen <strong>${fmtMoney(puntMort)}</strong> d'ingressos anuals per cobrir costos.
+          Ingressos actuals: <strong>${fmtMoney(ingressosAny)}</strong>
+          (<span class="${distancia>=0?'pos':'neg'}">${distancia>=0?'+':''}${fmtMoney(distancia)} ${distancia>=0?'per sobre':'per sota'} del punt mort</span>).
+        </p>`}
+      </div>
+      <p class="muted-note">Costos fixos = compres/serveis marcats com a "fix" + personal (brut+SS empresa) + interessos de préstecs. Costos variables = compres/serveis marcats com a "variable".</p>
+    </div>`;
+}
+</script>
+</body>
+</html>

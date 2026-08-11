@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Factures emeses</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#00387C;--blue-mid:#1a54a0;--blue-light:#e8f0fb;
+  --green:#1a8c42;--green-bg:#d4edda;--green-txt:#155724;
+  --amber:#c96a10;--amber-bg:#ffe5d0;--amber-txt:#7c3d0f;
+  --red:#c0392b;--red-bg:#f8d7da;--red-txt:#721c24;
+  --bg:#FAF8F6;--white:#fff;--border:#dee2e6;--border-light:#eaeef2;
+  --text:#212529;--muted:#6c757d;
+  --sidebar:220px;--topbar:58px;--r:6px;
+  --shadow:0 1px 4px rgba(0,0,0,.1),0 4px 12px rgba(0,0,0,.06);
+}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+#app{display:flex;height:100vh}
+#sidebar{width:var(--sidebar);background:#fff;border-right:1px solid #EDE9E4;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+#logo-area{padding:14px 16px 12px;border-bottom:1px solid #EDE9E4;cursor:pointer}
+.logo-main{font-size:19px;font-weight:800;color:var(--blue);letter-spacing:-.4px;line-height:1.1}
+.logo-sub{font-size:10.5px;color:#6b7280;margin-top:3px;letter-spacing:.3px;font-style:italic}
+#nav{padding:10px 0;flex:1}
+.nav-section{padding:10px 14px 3px;font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:1.2px;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 16px;color:#374151;cursor:pointer;border-left:3px solid transparent;transition:all .15s;font-size:13px;user-select:none}
+.nav-item:hover{background:#f3f4f6;color:#111827}
+.nav-item.active{background:#eff6ff;color:var(--blue);border-left-color:var(--blue);font-weight:600}
+.nav-item .ico{font-size:15px;width:19px;text-align:center;flex-shrink:0}
+.nav-footer{padding:12px 14px;border-top:1px solid #EDE9E4;font-size:11px;color:#9ca3af}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#topbar{height:var(--topbar);background:var(--white);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;gap:12px;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+#topbar h1{font-size:17px;font-weight:700;color:var(--blue);flex:1}
+#content{flex:1;overflow-y:auto;padding:20px 24px}
+.kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+.kpi{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);padding:14px 18px;border-left:4px solid var(--blue)}
+.kpi.g{border-left-color:var(--green)}.kpi.a{border-left-color:var(--amber)}
+.kpi-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-bottom:6px}
+.kpi-val{font-size:22px;font-weight:800;color:var(--text)}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.toolbar select,.toolbar input{padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit}
+.toolbar input[type=text]{flex:1;min-width:160px}
+.card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{background:#f8f9fa;text-align:left;padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);border-bottom:1px solid var(--border)}
+tbody td{padding:10px 14px;border-bottom:1px solid var(--border-light)}
+tbody tr:hover{background:var(--blue-light)}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.badge.ok{background:var(--green-bg);color:var(--green-txt)}
+.badge.pend{background:var(--amber-bg);color:var(--amber-txt)}
+.row-act{display:flex;gap:6px}
+.icon-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:3px 6px;border-radius:4px}
+.icon-btn:hover{background:#eee}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r);border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--blue-mid)}
+.btn-secondary{background:#fff;color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{background:#f3f4f6}
+.btn-sm{padding:5px 10px;font-size:12px}
+.empty{text-align:center;padding:40px;color:var(--muted)}
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:100}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:10px;width:480px;max-width:92vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.3)}
+.modal-hdr{padding:18px 22px;border-bottom:1px solid var(--border-light);display:flex;align-items:center}
+.modal-hdr h3{flex:1;font-size:16px}
+.modal-body{padding:20px 22px;display:flex;flex-direction:column;gap:14px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.fg input,.fg select,.fg textarea{padding:9px 11px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fg-check{flex-direction:row;align-items:center;gap:8px}
+.modal-ftr{padding:16px 22px;border-top:1px solid var(--border-light);display:flex;justify-content:flex-end;gap:10px}
+#toast{position:fixed;bottom:22px;right:22px;z-index:999;display:flex;flex-direction:column;gap:8px}
+.toast{padding:11px 18px;border-radius:var(--r);font-size:13px;font-weight:600;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.25);animation:tin .3s ease}
+.toast.ok{background:var(--green)}.toast.err{background:var(--red)}.toast.inf{background:var(--blue)}
+@keyframes tin{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.2);border-radius:3px}
+</style>
+</head>
+<body>
+<div id="app">
+<nav id="sidebar">
+  <div id="logo-area" onclick="location.href='index.html'">
+    <div class="logo-main">📊 Dashboard</div>
+    <div class="logo-sub">Gestió financera</div>
+  </div>
+  <div id="nav">
+    <div class="nav-item" onclick="location.href='index.html'"><span class="ico">🏠</span> Inici</div>
+    <div class="nav-section">Facturació</div>
+    <div class="nav-item active" onclick="location.href='factures-emeses.html'"><span class="ico">🧾</span> Factures emeses</div>
+    <div class="nav-item" onclick="location.href='factures-rebudes.html'"><span class="ico">📥</span> Factures rebudes</div>
+    <div class="nav-section">Personal i finançament</div>
+    <div class="nav-item" onclick="location.href='nomines.html'"><span class="ico">👥</span> Nòmines</div>
+    <div class="nav-item" onclick="location.href='prestecs.html'"><span class="ico">🏦</span> Préstecs</div>
+    <div class="nav-section">Anàlisi</div>
+    <div class="nav-item" onclick="location.href='reports.html'"><span class="ico">📈</span> Reports</div>
+  </div>
+  <div class="nav-footer">Dashboard v1.0</div>
+</nav>
+<main id="main">
+  <header id="topbar">
+    <h1>Factures emeses</h1>
+    <span id="user-email" style="font-size:12px;color:var(--muted);margin-right:4px"></span>
+    <button class="btn btn-secondary btn-sm" onclick="doLogout()">⏻ Sortir</button>
+  </header>
+  <div id="content">
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Total facturat</div><div class="kpi-val" id="kpi-total">—</div></div>
+      <div class="kpi g"><div class="kpi-label">Cobrat</div><div class="kpi-val" id="kpi-cobrat">—</div></div>
+      <div class="kpi a"><div class="kpi-label">Pendent</div><div class="kpi-val" id="kpi-pendent">—</div></div>
+    </div>
+    <div class="toolbar">
+      <select id="f-any" onchange="render()"></select>
+      <select id="f-estat" onchange="render()">
+        <option value="">Tots els estats</option>
+        <option value="cobrat">Cobrades</option>
+        <option value="pendent">Pendents</option>
+      </select>
+      <input type="text" id="f-cerca" placeholder="Cerca client o concepte..." oninput="render()">
+      <button class="btn btn-primary" onclick="openModal()">+ Nova factura</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr>
+          <th>Data</th><th>Concepte</th><th>Client</th>
+          <th class="num">Base</th><th class="num">IVA</th><th class="num">Total</th>
+          <th>Estat</th><th>Cobrament</th><th></th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="empty" id="empty" style="display:none">Cap factura registrada.</div>
+    </div>
+  </div>
+</main>
+</div>
+<div id="toast"></div>
+
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <div class="modal-hdr"><h3 id="modal-title">Nova factura</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="m-id">
+      <div class="fg-row">
+        <div class="fg"><label>Data</label><input type="date" id="m-data"></div>
+        <div class="fg"><label>Client</label><input type="text" id="m-client"></div>
+      </div>
+      <div class="fg"><label>Concepte</label><input type="text" id="m-concepte"></div>
+      <div class="fg-row">
+        <div class="fg"><label>Base</label><input type="number" step="0.01" id="m-base" oninput="calcTotal()"></div>
+        <div class="fg"><label>IVA %</label><input type="number" step="0.01" id="m-iva-pct" value="21" oninput="calcTotal()"></div>
+      </div>
+      <div class="fg-row">
+        <div class="fg"><label>Import IVA</label><input type="text" id="m-iva-import" disabled></div>
+        <div class="fg"><label>Total</label><input type="text" id="m-total" disabled></div>
+      </div>
+      <div class="fg-row">
+        <div class="fg fg-check"><input type="checkbox" id="m-cobrat" onchange="toggleDataCobrament()"><label style="margin:0">Cobrat</label></div>
+        <div class="fg"><label>Data cobrament</label><input type="date" id="m-data-cobrament"></div>
+      </div>
+      <div class="fg"><label>Notes</label><textarea id="m-notes" rows="2"></textarea></div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-secondary" id="btn-del" style="display:none;margin-right:auto;background:var(--red-bg);color:var(--red-txt)" onclick="delFactura()">🗑 Eliminar</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel·lar</button>
+      <button class="btn btn-primary" onclick="saveFactura()">Desar</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/neon-client.js"></script>
+<script>
+let rows = [];
+if(requireAuth()) load();
+
+function fmtMoney(n){ return (Number(n)||0).toLocaleString('ca-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+function fmtDate(d){ if(!d) return '—'; return new Date(d+'T00:00:00').toLocaleDateString('ca-ES'); }
+function toast(msg,type='inf'){
+  const el=document.createElement('div'); el.className='toast '+type; el.textContent=msg;
+  document.getElementById('toast').appendChild(el); setTimeout(()=>el.remove(),3500);
+}
+
+async function load(){
+  try{
+    rows = await sbGet('factures_emeses','select=*&order=data.desc');
+    fillAnys();
+    render();
+  }catch(e){ toast('Error carregant: '+e.message,'err'); }
+}
+
+function fillAnys(){
+  const sel = document.getElementById('f-any');
+  const anys = [...new Set(rows.map(r=>r.data.slice(0,4)))].sort((a,b)=>b-a);
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Tots els anys</option>' + anys.map(a=>`<option value="${a}">${a}</option>`).join('');
+  if(anys.includes(cur)) sel.value = cur;
+}
+
+function render(){
+  const any = document.getElementById('f-any').value;
+  const estat = document.getElementById('f-estat').value;
+  const cerca = document.getElementById('f-cerca').value.toLowerCase();
+
+  let filtered = rows.filter(r=>{
+    if(any && !r.data.startsWith(any)) return false;
+    if(estat==='cobrat' && !r.cobrat) return false;
+    if(estat==='pendent' && r.cobrat) return false;
+    if(cerca && !((r.client||'')+(r.concepte||'')).toLowerCase().includes(cerca)) return false;
+    return true;
+  });
+
+  const total = filtered.reduce((s,r)=>s+Number(r.total),0);
+  const cobrat = filtered.filter(r=>r.cobrat).reduce((s,r)=>s+Number(r.total),0);
+  document.getElementById('kpi-total').textContent = fmtMoney(total);
+  document.getElementById('kpi-cobrat').textContent = fmtMoney(cobrat);
+  document.getElementById('kpi-pendent').textContent = fmtMoney(total-cobrat);
+
+  const tbody = document.getElementById('tbody');
+  document.getElementById('empty').style.display = filtered.length ? 'none':'block';
+  tbody.innerHTML = filtered.map(r=>`
+    <tr>
+      <td>${fmtDate(r.data)}</td>
+      <td>${r.concepte||''}</td>
+      <td>${r.client||''}</td>
+      <td class="num">${fmtMoney(r.base)}</td>
+      <td class="num">${fmtMoney(r.iva_import)}</td>
+      <td class="num"><strong>${fmtMoney(r.total)}</strong></td>
+      <td>${r.cobrat?'<span class="badge ok">Cobrat</span>':'<span class="badge pend">Pendent</span>'}</td>
+      <td>${fmtDate(r.data_cobrament)}</td>
+      <td class="row-act">
+        <button class="icon-btn" onclick="openModal(${r.id})" title="Editar">✏️</button>
+      </td>
+    </tr>`).join('');
+}
+
+function calcTotal(){
+  const base = Number(document.getElementById('m-base').value)||0;
+  const pct = Number(document.getElementById('m-iva-pct').value)||0;
+  const iva = base*pct/100;
+  document.getElementById('m-iva-import').value = fmtMoney(iva);
+  document.getElementById('m-total').value = fmtMoney(base+iva);
+}
+
+function toggleDataCobrament(){
+  const chk = document.getElementById('m-cobrat').checked;
+  if(chk && !document.getElementById('m-data-cobrament').value){
+    document.getElementById('m-data-cobrament').value = todayStr();
+  }
+}
+
+function openModal(id){
+  const r = id ? rows.find(x=>x.id===id) : null;
+  document.getElementById('modal-title').textContent = r ? 'Editar factura' : 'Nova factura';
+  document.getElementById('m-id').value = r ? r.id : '';
+  document.getElementById('m-data').value = r ? r.data : todayStr();
+  document.getElementById('m-client').value = r ? (r.client||'') : '';
+  document.getElementById('m-concepte').value = r ? (r.concepte||'') : '';
+  document.getElementById('m-base').value = r ? r.base : '';
+  document.getElementById('m-iva-pct').value = r ? r.iva_pct : 21;
+  document.getElementById('m-cobrat').checked = r ? r.cobrat : false;
+  document.getElementById('m-data-cobrament').value = r ? (r.data_cobrament||'') : '';
+  document.getElementById('m-notes').value = r ? (r.notes||'') : '';
+  document.getElementById('btn-del').style.display = r ? 'inline-flex' : 'none';
+  calcTotal();
+  document.getElementById('modal-bg').classList.add('show');
+}
+function closeModal(){ document.getElementById('modal-bg').classList.remove('show'); }
+
+async function saveFactura(){
+  const id = document.getElementById('m-id').value;
+  const base = Number(document.getElementById('m-base').value)||0;
+  const iva_pct = Number(document.getElementById('m-iva-pct').value)||0;
+  const ivaImport = base*iva_pct/100;
+  const data = {
+    data: document.getElementById('m-data').value,
+    concepte: document.getElementById('m-concepte').value.trim(),
+    client: document.getElementById('m-client').value.trim(),
+    base, iva_pct,
+    iva_import: Math.round(ivaImport*100)/100,
+    total: Math.round((base+ivaImport)*100)/100,
+    cobrat: document.getElementById('m-cobrat').checked,
+    data_cobrament: document.getElementById('m-data-cobrament').value || null,
+    notes: document.getElementById('m-notes').value.trim() || null
+  };
+  if(!data.data || !data.concepte){ toast('Data i concepte són obligatoris','err'); return; }
+  try{
+    if(id){ await sbPatch('factures_emeses', id, data); toast('Factura actualitzada','ok'); }
+    else { await sbPost('factures_emeses', data); toast('Factura creada','ok'); }
+    closeModal();
+    await load();
+  }catch(e){ toast('Error desant: '+e.message,'err'); }
+}
+
+async function delFactura(){
+  const id = document.getElementById('m-id').value;
+  if(!id || !confirm('Segur que vols eliminar aquesta factura?')) return;
+  try{
+    await sbDel('factures_emeses', id);
+    toast('Factura eliminada','ok');
+    closeModal();
+    await load();
+  }catch(e){ toast('Error eliminant: '+e.message,'err'); }
+}
+</script>
+</body>
+</html>
