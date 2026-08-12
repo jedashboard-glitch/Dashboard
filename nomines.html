@@ -247,9 +247,9 @@ function calcNet(){
 
 function toggleDataPagament(){
   const chk = document.getElementById('m-pagat').checked;
-  if(chk && !document.getElementById('m-data-pagament').value){
-    document.getElementById('m-data-pagament').value = todayStr();
-  }
+  const dataEl = document.getElementById('m-data-pagament');
+  if(chk){ if(!dataEl.value) dataEl.value = todayStr(); }
+  else { dataEl.value = ''; }
 }
 
 function openModal(id){
@@ -283,7 +283,7 @@ async function saveNomina(){
     import_brut, ss_trab, ss_empresa, irpf,
     import_net: Math.round((import_brut-ss_trab-irpf)*100)/100,
     pagat: document.getElementById('m-pagat').checked,
-    data_pagament: document.getElementById('m-data-pagament').value || null,
+    data_pagament: document.getElementById('m-pagat').checked ? (document.getElementById('m-data-pagament').value || null) : null,
     notes: document.getElementById('m-notes').value.trim() || null
   };
   if(!data.data || !data.empleat){ toast('Data i empleat són obligatoris','err'); return; }

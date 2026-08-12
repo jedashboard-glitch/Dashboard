@@ -349,9 +349,9 @@ function calcTotal(){
 
 function toggleDataCobrament(){
   const chk = document.getElementById('m-cobrat').checked;
-  if(chk && !document.getElementById('m-data-cobrament').value){
-    document.getElementById('m-data-cobrament').value = todayStr();
-  }
+  const dataEl = document.getElementById('m-data-cobrament');
+  if(chk){ if(!dataEl.value) dataEl.value = todayStr(); }
+  else { dataEl.value = ''; }
 }
 
 function openModal(id){
@@ -425,7 +425,7 @@ async function saveFactura(){
     irpf_import: Math.round(irpfImport*100)/100,
     total: Math.round((base+ivaImport-irpfImport)*100)/100,
     cobrat: document.getElementById('m-cobrat').checked,
-    data_cobrament: document.getElementById('m-data-cobrament').value || null,
+    data_cobrament: document.getElementById('m-cobrat').checked ? (document.getElementById('m-data-cobrament').value || null) : null,
     notes: document.getElementById('m-notes').value.trim() || null
   };
   if(!data.data || !data.concepte){ toast('Data i concepte són obligatoris','err'); return; }

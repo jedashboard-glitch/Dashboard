@@ -367,9 +367,9 @@ function calcTotal(){
 
 function toggleDataPagament(){
   const chk = document.getElementById('m-pagat').checked;
-  if(chk && !document.getElementById('m-data-pagament').value){
-    document.getElementById('m-data-pagament').value = todayStr();
-  }
+  const dataEl = document.getElementById('m-data-pagament');
+  if(chk){ if(!dataEl.value) dataEl.value = todayStr(); }
+  else { dataEl.value = ''; }
 }
 
 function openModal(id){
@@ -446,7 +446,7 @@ async function saveFactura(){
     total: Math.round((base+ivaImport-irpfImport)*100)/100,
     tipus_cost: document.getElementById('m-tipus-cost').value,
     pagat: document.getElementById('m-pagat').checked,
-    data_pagament: document.getElementById('m-data-pagament').value || null,
+    data_pagament: document.getElementById('m-pagat').checked ? (document.getElementById('m-data-pagament').value || null) : null,
     notes: document.getElementById('m-notes').value.trim() || null
   };
   if(!data.data || !data.concepte){ toast('Data i concepte són obligatoris','err'); return; }
