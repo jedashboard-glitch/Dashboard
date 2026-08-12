@@ -166,8 +166,9 @@ tbody tr.void{opacity:.55}
       <input type="hidden" id="m-id">
       <div class="fg-row">
         <div class="fg"><label>Data</label><input type="date" id="m-data"></div>
-        <div class="fg"><label>Núm. factura</label><input type="text" id="m-num-factura"></div>
+        <div class="fg"><label>Data termini</label><input type="date" id="m-data-termini"></div>
       </div>
+      <div class="fg"><label>Núm. factura</label><input type="text" id="m-num-factura"></div>
       <div class="fg">
         <label>Proveïdor</label>
         <select id="m-proveidor-id" onchange="onProveidorChange()"></select>
@@ -377,6 +378,7 @@ function openModal(id){
   document.getElementById('modal-title').textContent = r ? 'Editar factura' : 'Nova factura';
   document.getElementById('m-id').value = r ? r.id : '';
   document.getElementById('m-data').value = r ? r.data : todayStr();
+  document.getElementById('m-data-termini').value = r ? (r.data_termini||r.data) : todayStr();
   document.getElementById('m-num-factura').value = r ? (r.num_factura||'') : '';
   populateProveidorSelect(r ? r.proveidor_id : (urlProveidorId||null));
   document.getElementById('m-concepte').value = r ? (r.concepte||'') : '';
@@ -400,6 +402,7 @@ function duplicarFactura(id){
   document.getElementById('modal-title').textContent = 'Duplicar factura';
   document.getElementById('m-id').value = '';
   document.getElementById('m-data').value = todayStr();
+  document.getElementById('m-data-termini').value = todayStr();
   document.getElementById('m-num-factura').value = '';
   populateProveidorSelect(src.proveidor_id);
   document.getElementById('m-concepte').value = src.concepte||'';
@@ -431,6 +434,7 @@ async function saveFactura(){
   const provObj = proveidorId ? proveidors.find(p=>p.id===proveidorId) : null;
   const data = {
     data: document.getElementById('m-data').value,
+    data_termini: document.getElementById('m-data-termini').value || null,
     num_factura: document.getElementById('m-num-factura').value.trim() || null,
     proveidor_id: proveidorId,
     proveidor: provObj ? provObj.nom : null,

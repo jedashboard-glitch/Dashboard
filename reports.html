@@ -38,6 +38,9 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
 .tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border)}
 .tab{padding:10px 18px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent}
 .tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.subtabs{display:flex;gap:8px;margin-bottom:14px}
+.subtab{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted)}
+.subtab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
 .card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:18px}
 .card-hdr{padding:14px 18px;border-bottom:1px solid var(--border-light)}
 .card-hdr h3{font-size:14px;font-weight:700}
@@ -220,16 +223,17 @@ function showTab(tab){
   });
 }
 
-function monthlySums(rows, dateField, valueFn, year){
+function monthlySumsBy(rows, dateFn, valueFn, year){
   const sums = Array(12).fill(0);
   rows.forEach(r=>{
-    const d = r[dateField];
+    const d = dateFn(r);
     if(!d || !d.startsWith(year)) return;
     const m = Number(d.slice(5,7))-1;
     sums[m] += valueFn(r);
   });
   return sums;
 }
+function monthlySums(rows, dateField, valueFn, year){ return monthlySumsBy(rows, r=>r[dateField], valueFn, year); }
 const sum = arr => arr.reduce((a,b)=>a+b,0);
 const addArr = (a,b) => a.map((v,i)=>v+b[i]);
 const subArr = (a,b) => a.map((v,i)=>v-b[i]);
@@ -346,6 +350,28 @@ async function toggleSSAjornament(any_liquidacio, mes, ajornat){
   }catch(e){ toast('Error desant ajornament: '+e.message,'err'); }
 }
 
+// Cadascuna d'aquestes 4 funcions té dos modes:
+// - real: només moviments confirmats (cobrat/pagat + la seva data real), com sempre.
+// - previsional: TOTES les files, usant la data real si ja s'ha confirmat, o la
+//   millor data prevista si no (Data termini a factures, pròpia data a nòmines,
+//   data_prevista a quotes de préstec).
+function calcCobraments(year, real){
+  if(real) return monthlySums(emeses.filter(r=>r.cobrat),'data_cobrament', r=>Number(r.total), year);
+  return monthlySumsBy(emeses, r=>r.cobrat?r.data_cobrament:(r.data_termini||r.data), r=>Number(r.total), year);
+}
+function calcProveidors(year, real){
+  if(real) return monthlySums(rebudes.filter(r=>r.pagat),'data_pagament', r=>Number(r.total), year);
+  return monthlySumsBy(rebudes, r=>r.pagat?r.data_pagament:(r.data_termini||r.data), r=>Number(r.total), year);
+}
+function calcSalariNet(year, real){
+  if(real) return monthlySums(nomines.filter(r=>r.pagat),'data_pagament', r=>Number(r.import_net), year);
+  return monthlySumsBy(nomines, r=>r.pagat?r.data_pagament:r.data, r=>Number(r.import_net), year);
+}
+function calcQuotesPrestecs(year, real){
+  if(real) return monthlySums(quotes.filter(r=>r.pagat),'data_pagament', r=>Number(r.import_total), year);
+  return monthlySumsBy(quotes, r=>r.pagat?r.data_pagament:r.data_prevista, r=>Number(r.import_total), year);
+}
+
 function groupPrevisions(year){
   const forYear = previsions.filter(p=>p.data && p.data.startsWith(String(year)));
   const groups = {};
@@ -411,16 +437,34 @@ function renderPL(year){
     </div>`;
 }
 
+let tresMode = 'previsional';
+function setTresMode(m){
+  tresMode = m;
+  renderTresoreria(document.getElementById('f-any').value);
+}
+
 function renderTresoreria(year){
-  const cobraments = monthlySums(emeses.filter(r=>r.cobrat),'data_cobrament', r=>Number(r.total), year);
-  const pagFactures = monthlySums(rebudes.filter(r=>r.pagat),'data_pagament', r=>Number(r.total), year);
-  const pagNomines = monthlySums(nomines.filter(r=>r.pagat),'data_pagament', r=>Number(r.import_net), year);
-  const pagQuotes = monthlySums(quotes.filter(r=>r.pagat),'data_pagament', r=>Number(r.import_total), year);
+  document.getElementById('tab-tresoreria').innerHTML = `
+    <div class="subtabs">
+      <button class="subtab ${tresMode==='previsional'?'active':''}" onclick="setTresMode('previsional')">📅 Previsional</button>
+      <button class="subtab ${tresMode==='real'?'active':''}" onclick="setTresMode('real')">✅ Real</button>
+    </div>
+    ${renderTresoreriaTable(year, tresMode)}
+    ${tresMode==='previsional' ? renderIvaQuarters(year)+renderSSMonths(year)+renderPrevisionsPanel(year) : ''}
+  `;
+}
+
+function renderTresoreriaTable(year, mode){
+  const real = mode==='real';
+  const cobraments = calcCobraments(year, real);
+  const pagFactures = calcProveidors(year, real);
+  const pagNomines = calcSalariNet(year, real);
+  const pagQuotes = calcQuotesPrestecs(year, real);
   const ivaTrimestral = calcLiquidacioIva(year);
   const irpf111 = calcIrpf111(year);
   const { ssTrab, ssEmpresa } = calcSS(year);
 
-  const prevGroups = groupPrevisions(year);
+  const prevGroups = real ? [] : groupPrevisions(year);
   const prevCobrament = prevGroups.filter(g=>g.tipus==='cobrament');
   const prevPagament = prevGroups.filter(g=>g.tipus==='pagament');
 
@@ -439,7 +483,11 @@ function renderTresoreria(year){
   const prevRowsCobrament = prevCobrament.map(g=>rowHTML('(+) '+g.etiqueta, g.valors)).join('');
   const prevRowsPagament = prevPagament.map(g=>rowHTML('(-) '+g.etiqueta, g.valors.map(v=>-v))).join('');
 
-  document.getElementById('tab-tresoreria').innerHTML = `
+  const nota = real
+    ? 'Vista Real: només compta moviments confirmats (cobrat/pagat) amb la seva data real. La liquidació d\'IVA, l\'IRPF/111 i la SS es mostren igualment perquè són pagaments obligatoris sense marca de "pagat" pròpia.'
+    : 'Vista Previsional: cada factura/nòmina/quota es projecta a un únic mes (la data real si ja és confirmada, si no la Data termini / data prevista), més les previsions manuals de sota. És el pressupost complet, no només el ja confirmat.';
+
+  return `
     <div class="card">
       <div class="card-hdr"><h3>Moviments de tresoreria ${year} (criteri de caixa)</h3><button class="btn btn-secondary" onclick="editSaldoInicial('${year}')">✏️ Saldo inicial</button></div>
       <div style="overflow-x:auto">
@@ -466,13 +514,8 @@ function renderTresoreria(year){
         </tbody>
       </table>
       </div>
-      <p class="muted-note">El Saldo inicial de gener és editable ("✏️ Saldo inicial" de dalt) i correspon al saldo bancari real a 1 de gener de ${year}; els mesos següents l'arrosseguen sols des del Saldo final anterior. La liquidació d'IVA i l'IRPF/111 no compensen saldos negatius entre períodes. Les línies de previsió són manuals — quan la factura/cobrament real es registri, recorda ajustar o eliminar la previsió corresponent.</p>
-    </div>
-
-    ${renderIvaQuarters(year)}
-    ${renderSSMonths(year)}
-    ${renderPrevisionsPanel(year)}
-  `;
+      <p class="muted-note">${nota} El Saldo inicial de gener és editable ("✏️ Saldo inicial" de dalt) i correspon al saldo bancari real a 1 de gener de ${year}; els mesos següents l'arrosseguen sols des del Saldo final anterior. La liquidació d'IVA i l'IRPF/111 no compensen saldos negatius entre períodes.</p>
+    </div>`;
 }
 
 async function editSaldoInicial(year){
