@@ -113,3 +113,10 @@ async function sbDel(t,id){
   const r = await fetch(`${NEON_DATA_API_URL}/${t}?id=eq.${id}`, { method:'DELETE', headers:getHDR() });
   if(!r.ok) throw new Error(await r.text());
 }
+
+// PIN per protegir l'anul·lació de factures. Canvia'l per un de propi.
+const CANCEL_PIN = '1234';
+function checkPin(msg){
+  const pin = prompt(msg || '🔒 PIN per anul·lar la factura:');
+  return pin !== null && pin === CANCEL_PIN;
+}

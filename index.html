@@ -95,6 +95,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
     <div class="nav-section">Facturació</div>
     <div class="nav-item" onclick="location.href='factures-emeses.html'"><span class="ico">🧾</span> Factures emeses</div>
     <div class="nav-item" onclick="location.href='factures-rebudes.html'"><span class="ico">📥</span> Factures rebudes</div>
+    <div class="nav-item" onclick="location.href='clients.html'"><span class="ico">🗂️</span> Clients</div>
+    <div class="nav-item" onclick="location.href='proveidors.html'"><span class="ico">🏭</span> Proveïdors</div>
     <div class="nav-section">Personal i finançament</div>
     <div class="nav-item" onclick="location.href='nomines.html'"><span class="ico">👥</span> Nòmines</div>
     <div class="nav-item" onclick="location.href='prestecs.html'"><span class="ico">🏦</span> Préstecs</div>
@@ -132,6 +134,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
     <div class="modules-grid">
       <a class="mod-card" href="factures-emeses.html"><div class="ico">🧾</div><div class="nom">Factures emeses</div></a>
       <a class="mod-card" href="factures-rebudes.html"><div class="ico">📥</div><div class="nom">Factures rebudes</div></a>
+      <a class="mod-card" href="clients.html"><div class="ico">🗂️</div><div class="nom">Clients</div></a>
+      <a class="mod-card" href="proveidors.html"><div class="ico">🏭</div><div class="nom">Proveïdors</div></a>
       <a class="mod-card" href="nomines.html"><div class="ico">👥</div><div class="nom">Nòmines</div></a>
       <a class="mod-card" href="prestecs.html"><div class="ico">🏦</div><div class="nom">Préstecs</div></a>
       <a class="mod-card" href="reports.html"><div class="ico">📈</div><div class="nom">Reports</div></a>
@@ -184,16 +188,17 @@ async function init(){
     ]);
 
     const inMonth = d => d>=first && d<=last;
+    const activa = f => f.estat !== 'anullada';
 
-    const ingressosMes = emeses.filter(f=>inMonth(f.data)).reduce((s,f)=>s+Number(f.base),0);
-    const despesesRebudesMes = rebudes.filter(f=>inMonth(f.data)).reduce((s,f)=>s+Number(f.base),0);
+    const ingressosMes = emeses.filter(activa).filter(f=>inMonth(f.data)).reduce((s,f)=>s+Number(f.base),0);
+    const despesesRebudesMes = rebudes.filter(activa).filter(f=>inMonth(f.data)).reduce((s,f)=>s+Number(f.base),0);
     const despesesNominesMes = nomines.filter(f=>inMonth(f.data)).reduce((s,f)=>s+Number(f.import_brut)+Number(f.ss_empresa),0);
     const despesesInteressosMes = quotes.filter(q=>inMonth(q.data_prevista)).reduce((s,q)=>s+Number(q.import_interessos),0);
     const despesesMes = despesesRebudesMes + despesesNominesMes + despesesInteressosMes;
     const resultatMes = ingressosMes - despesesMes;
 
-    const pendentCobrar = emeses.filter(f=>!f.cobrat).reduce((s,f)=>s+Number(f.total),0);
-    const pendentPagar = rebudes.filter(f=>!f.pagat).reduce((s,f)=>s+Number(f.total),0)
+    const pendentCobrar = emeses.filter(activa).filter(f=>!f.cobrat).reduce((s,f)=>s+Number(f.total),0);
+    const pendentPagar = rebudes.filter(activa).filter(f=>!f.pagat).reduce((s,f)=>s+Number(f.total),0)
       + nomines.filter(f=>!f.pagat).reduce((s,f)=>s+Number(f.import_net),0)
       + quotes.filter(q=>!q.pagat).reduce((s,q)=>s+Number(q.import_total),0);
     const pendentNet = pendentCobrar - pendentPagar;
@@ -208,14 +213,14 @@ async function init(){
       `Aquest mes: ${fmtMoney(ingressosMes)} d'ingressos, resultat ${fmtMoney(resultatMes)}.`;
 
     // Pendent de cobrar
-    const cobrarItems = emeses.filter(f=>!f.cobrat).sort((a,b)=>a.data<b.data?-1:1).slice(0,8);
+    const cobrarItems = emeses.filter(activa).filter(f=>!f.cobrat).sort((a,b)=>a.data<b.data?-1:1).slice(0,8);
     renderList('list-cobrar', cobrarItems, f=>({
       nom: f.client || f.concepte, sub: fmtDate(f.data), amt: fmtMoney(f.total), dot:'dot-g'
     }), 'factures-emeses.html');
 
     // Pendent de pagar (combinat)
     const pagarItems = [
-      ...rebudes.filter(f=>!f.pagat).map(f=>({data:f.data,nom:f.proveidor||f.concepte,amt:f.total,tipus:'Factura'})),
+      ...rebudes.filter(activa).filter(f=>!f.pagat).map(f=>({data:f.data,nom:f.proveidor||f.concepte,amt:f.total,tipus:'Factura'})),
       ...nomines.filter(f=>!f.pagat).map(f=>({data:f.data,nom:f.empleat,amt:f.import_net,tipus:'Nòmina'})),
       ...quotes.filter(q=>!q.pagat).map(q=>({data:q.data_prevista,nom:'Quota préstec',amt:q.import_total,tipus:'Préstec'}))
     ].sort((a,b)=>a.data<b.data?-1:1).slice(0,8);

@@ -11,6 +11,7 @@
   --green:#1a8c42;--green-bg:#d4edda;--green-txt:#155724;
   --amber:#c96a10;--amber-bg:#ffe5d0;--amber-txt:#7c3d0f;
   --red:#c0392b;--red-bg:#f8d7da;--red-txt:#721c24;
+  --grey-bg:#e9ecef;--grey-txt:#495057;
   --bg:#FAF8F6;--white:#fff;--border:#dee2e6;--border-light:#eaeef2;
   --text:#212529;--muted:#6c757d;
   --sidebar:220px;--topbar:58px;--r:6px;
@@ -41,20 +42,27 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
 .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
 .toolbar select,.toolbar input{padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit}
 .toolbar input[type=text]{flex:1;min-width:160px}
+.chip{display:none;align-items:center;gap:6px;background:var(--blue-light);color:var(--blue);padding:6px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.chip.show{display:inline-flex}
+.chip button{background:none;border:none;color:var(--blue);cursor:pointer;font-weight:800;font-size:13px;padding:0;line-height:1}
 .card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.tbl-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
-thead th{background:#f8f9fa;text-align:left;padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);border-bottom:1px solid var(--border)}
+thead th{background:#f8f9fa;text-align:left;padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
 tbody td{padding:10px 14px;border-bottom:1px solid var(--border-light)}
 tbody tr:hover{background:var(--blue-light)}
+tbody tr.void{opacity:.55}
 .num{text-align:right;font-variant-numeric:tabular-nums}
 .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
 .badge.ok{background:var(--green-bg);color:var(--green-txt)}
 .badge.pend{background:var(--amber-bg);color:var(--amber-txt)}
 .badge.fix{background:var(--blue-light);color:var(--blue)}
 .badge.var{background:#f3e8ff;color:#7c3aed}
+.badge.void{background:var(--grey-bg);color:var(--grey-txt)}
 .row-act{display:flex;gap:6px}
 .icon-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:3px 6px;border-radius:4px}
 .icon-btn:hover{background:#eee}
+.icon-btn:disabled{opacity:.3;cursor:default}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r);border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s}
 .btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--blue-mid)}
 .btn-secondary{background:#fff;color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{background:#f3f4f6}
@@ -77,6 +85,7 @@ tbody tr:hover{background:var(--blue-light)}
 .toast{padding:11px 18px;border-radius:var(--r);font-size:13px;font-weight:600;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.25);animation:tin .3s ease}
 .toast.ok{background:var(--green)}.toast.err{background:var(--red)}.toast.inf{background:var(--blue)}
 @keyframes tin{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+.hint{font-size:12px;color:var(--muted)}
 ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.2);border-radius:3px}
 </style>
 </head>
@@ -92,6 +101,8 @@ tbody tr:hover{background:var(--blue-light)}
     <div class="nav-section">Facturació</div>
     <div class="nav-item" onclick="location.href='factures-emeses.html'"><span class="ico">🧾</span> Factures emeses</div>
     <div class="nav-item active" onclick="location.href='factures-rebudes.html'"><span class="ico">📥</span> Factures rebudes</div>
+    <div class="nav-item" onclick="location.href='clients.html'"><span class="ico">🗂️</span> Clients</div>
+    <div class="nav-item" onclick="location.href='proveidors.html'"><span class="ico">🏭</span> Proveïdors</div>
     <div class="nav-section">Personal i finançament</div>
     <div class="nav-item" onclick="location.href='nomines.html'"><span class="ico">👥</span> Nòmines</div>
     <div class="nav-item" onclick="location.href='prestecs.html'"><span class="ico">🏦</span> Préstecs</div>
@@ -118,6 +129,7 @@ tbody tr:hover{background:var(--blue-light)}
         <option value="">Tots els estats</option>
         <option value="pagat">Pagades</option>
         <option value="pendent">Pendents</option>
+        <option value="anullada">Anul·lades</option>
       </select>
       <select id="f-tipus" onchange="render()">
         <option value="">Fix i variable</option>
@@ -125,17 +137,20 @@ tbody tr:hover{background:var(--blue-light)}
         <option value="variable">Cost variable</option>
       </select>
       <input type="text" id="f-cerca" placeholder="Cerca proveïdor o concepte..." oninput="render()">
+      <span class="chip" id="prov-chip"><span id="prov-chip-nom"></span><button onclick="clearProveidorFilter()">✕</button></span>
       <button class="btn btn-primary" onclick="openModal()">+ Nova factura</button>
     </div>
     <div class="card">
+      <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>Data</th><th>Concepte</th><th>Proveïdor</th>
-          <th class="num">Base</th><th class="num">IVA</th><th class="num">Total</th>
+          <th>Data</th><th>Núm.</th><th>Concepte</th><th>Proveïdor</th>
+          <th class="num">Base</th><th class="num">IVA</th><th class="num">IRPF</th><th class="num">Total</th>
           <th>Tipus</th><th>Estat</th><th>Pagament</th><th></th>
         </tr></thead>
         <tbody id="tbody"></tbody>
       </table>
+      </div>
       <div class="empty" id="empty" style="display:none">Cap factura registrada.</div>
     </div>
   </div>
@@ -150,7 +165,11 @@ tbody tr:hover{background:var(--blue-light)}
       <input type="hidden" id="m-id">
       <div class="fg-row">
         <div class="fg"><label>Data</label><input type="date" id="m-data"></div>
-        <div class="fg"><label>Proveïdor</label><input type="text" id="m-proveidor"></div>
+        <div class="fg"><label>Núm. factura</label><input type="text" id="m-num-factura"></div>
+      </div>
+      <div class="fg">
+        <label>Proveïdor</label>
+        <select id="m-proveidor-id" onchange="onProveidorChange()"></select>
       </div>
       <div class="fg"><label>Concepte</label><input type="text" id="m-concepte"></div>
       <div class="fg-row">
@@ -158,8 +177,12 @@ tbody tr:hover{background:var(--blue-light)}
         <div class="fg"><label>IVA %</label><input type="number" step="0.01" id="m-iva-pct" value="21" oninput="calcTotal()"></div>
       </div>
       <div class="fg-row">
-        <div class="fg"><label>Import IVA</label><input type="text" id="m-iva-import" disabled></div>
+        <div class="fg"><label>IRPF %</label><input type="number" step="0.01" id="m-irpf-pct" value="0" oninput="calcTotal()"></div>
         <div class="fg"><label>Total</label><input type="text" id="m-total" disabled></div>
+      </div>
+      <div class="fg-row">
+        <div class="fg"><label>Import IVA</label><input type="text" id="m-iva-import" disabled></div>
+        <div class="fg"><label>Import IRPF</label><input type="text" id="m-irpf-import" disabled></div>
       </div>
       <div class="fg">
         <label>Tipus de cost</label>
@@ -173,6 +196,7 @@ tbody tr:hover{background:var(--blue-light)}
         <div class="fg"><label>Data pagament</label><input type="date" id="m-data-pagament"></div>
       </div>
       <div class="fg"><label>Notes</label><textarea id="m-notes" rows="2"></textarea></div>
+      <p class="hint" id="m-hint"></p>
     </div>
     <div class="modal-ftr">
       <button class="btn btn-secondary" id="btn-del" style="display:none;margin-right:auto;background:var(--red-bg);color:var(--red-txt)" onclick="delFactura()">🗑 Eliminar</button>
@@ -185,7 +209,10 @@ tbody tr:hover{background:var(--blue-light)}
 <script src="js/neon-client.js"></script>
 <script>
 let rows = [];
-if(requireAuth()) load();
+let proveidors = [];
+let urlProveidorId = null;
+let duplicating = false;
+if(requireAuth()) init();
 
 function fmtMoney(n){ return (Number(n)||0).toLocaleString('ca-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
 function fmtDate(d){ if(!d) return '—'; return new Date(d+'T00:00:00').toLocaleDateString('ca-ES'); }
@@ -194,12 +221,40 @@ function toast(msg,type='inf'){
   document.getElementById('toast').appendChild(el); setTimeout(()=>el.remove(),3500);
 }
 
+async function init(){
+  const params = new URLSearchParams(location.search);
+  urlProveidorId = params.get('proveidor_id') ? Number(params.get('proveidor_id')) : null;
+  await load();
+}
+
 async function load(){
   try{
-    rows = await sbGet('factures_rebudes','select=*&order=data.desc');
+    [rows, proveidors] = await Promise.all([
+      sbGet('factures_rebudes','select=*&order=data.desc'),
+      sbGet('proveidors','select=id,nom,iva_pct,irpf_pct,tipus_cost_default,actiu&order=nom.asc')
+    ]);
     fillAnys();
+    populateProveidorSelect();
+    showProveidorChip();
     render();
   }catch(e){ toast('Error carregant: '+e.message,'err'); }
+}
+
+function showProveidorChip(){
+  const chip = document.getElementById('prov-chip');
+  if(urlProveidorId){
+    const p = proveidors.find(x=>x.id===urlProveidorId);
+    document.getElementById('prov-chip-nom').textContent = 'Proveïdor: '+(p?p.nom:('#'+urlProveidorId));
+    chip.classList.add('show');
+  } else {
+    chip.classList.remove('show');
+  }
+}
+function clearProveidorFilter(){
+  urlProveidorId = null;
+  history.replaceState(null,'',location.pathname);
+  showProveidorChip();
+  render();
 }
 
 function fillAnys(){
@@ -217,45 +272,95 @@ function render(){
   const cerca = document.getElementById('f-cerca').value.toLowerCase();
 
   let filtered = rows.filter(r=>{
+    if(urlProveidorId && r.proveidor_id!==urlProveidorId) return false;
     if(any && !r.data.startsWith(any)) return false;
-    if(estat==='pagat' && !r.pagat) return false;
-    if(estat==='pendent' && r.pagat) return false;
+    if(estat==='pagat' && (!r.pagat || r.estat==='anullada')) return false;
+    if(estat==='pendent' && (r.pagat || r.estat==='anullada')) return false;
+    if(estat==='anullada' && r.estat!=='anullada') return false;
     if(tipus && r.tipus_cost!==tipus) return false;
-    if(cerca && !((r.proveidor||'')+(r.concepte||'')).toLowerCase().includes(cerca)) return false;
+    if(cerca && !((r.proveidor||'')+(r.concepte||'')+(r.num_factura||'')).toLowerCase().includes(cerca)) return false;
     return true;
   });
 
-  const total = filtered.reduce((s,r)=>s+Number(r.total),0);
-  const pagat = filtered.filter(r=>r.pagat).reduce((s,r)=>s+Number(r.total),0);
+  const actives = filtered.filter(r=>r.estat!=='anullada');
+  const total = actives.reduce((s,r)=>s+Number(r.total),0);
+  const pagat = actives.filter(r=>r.pagat).reduce((s,r)=>s+Number(r.total),0);
   document.getElementById('kpi-total').textContent = fmtMoney(total);
   document.getElementById('kpi-pagat').textContent = fmtMoney(pagat);
   document.getElementById('kpi-pendent').textContent = fmtMoney(total-pagat);
 
   const tbody = document.getElementById('tbody');
   document.getElementById('empty').style.display = filtered.length ? 'none':'block';
-  tbody.innerHTML = filtered.map(r=>`
-    <tr>
+  tbody.innerHTML = filtered.map(r=>{
+    const isVoid = r.estat==='anullada';
+    let estatBadge = isVoid ? '<span class="badge void">Anul·lada</span>'
+      : (r.pagat?'<span class="badge ok">Pagat</span>':'<span class="badge pend">Pendent</span>');
+    return `<tr class="${isVoid?'void':''}">
       <td>${fmtDate(r.data)}</td>
+      <td>${r.num_factura||'—'}</td>
       <td>${r.concepte||''}</td>
       <td>${r.proveidor||''}</td>
       <td class="num">${fmtMoney(r.base)}</td>
       <td class="num">${fmtMoney(r.iva_import)}</td>
+      <td class="num">${fmtMoney(r.irpf_import)}</td>
       <td class="num"><strong>${fmtMoney(r.total)}</strong></td>
       <td>${r.tipus_cost==='fix'?'<span class="badge fix">Fix</span>':'<span class="badge var">Variable</span>'}</td>
-      <td>${r.pagat?'<span class="badge ok">Pagat</span>':'<span class="badge pend">Pendent</span>'}</td>
-      <td>${fmtDate(r.data_pagament)}</td>
+      <td>${estatBadge}</td>
+      <td>${isVoid?fmtDate(r.data_anullacio):fmtDate(r.data_pagament)}</td>
       <td class="row-act">
         <button class="icon-btn" onclick="openModal(${r.id})" title="Editar">✏️</button>
+        <button class="icon-btn" onclick="duplicarFactura(${r.id})" title="Duplicar">⧉</button>
+        <button class="icon-btn" onclick="anulaFactura(${r.id})" title="Anul·lar" ${isVoid?'disabled':''}>🚫</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
+}
+
+function populateProveidorSelect(selectedId){
+  const sel = document.getElementById('m-proveidor-id');
+  const activeProveidors = proveidors.filter(p=>p.actiu!==false);
+  sel.innerHTML = '<option value="">— Selecciona proveïdor —</option>'
+    + activeProveidors.map(p=>`<option value="${p.id}">${p.nom}</option>`).join('')
+    + '<option value="__new__">+ Crear nou proveïdor...</option>';
+  if(selectedId) sel.value = String(selectedId);
+}
+
+async function onProveidorChange(){
+  const sel = document.getElementById('m-proveidor-id');
+  if(sel.value==='__new__'){
+    const nom = prompt('Nom del nou proveïdor:');
+    if(!nom){ sel.value=''; return; }
+    try{
+      const [created] = await sbPost('proveidors', { nom: nom.trim() });
+      proveidors.push(created);
+      populateProveidorSelect(created.id);
+      applyProveidorDefaults(created);
+      toast('Proveïdor creat','ok');
+    }catch(e){ toast('Error creant proveïdor: '+e.message,'err'); sel.value=''; }
+    return;
+  }
+  const isNew = !document.getElementById('m-id').value;
+  if(isNew && sel.value){
+    const p = proveidors.find(x=>String(x.id)===sel.value);
+    if(p) applyProveidorDefaults(p);
+  }
+}
+function applyProveidorDefaults(p){
+  if(p.iva_pct!=null) document.getElementById('m-iva-pct').value = p.iva_pct;
+  if(p.irpf_pct!=null) document.getElementById('m-irpf-pct').value = p.irpf_pct;
+  if(p.tipus_cost_default) document.getElementById('m-tipus-cost').value = p.tipus_cost_default;
+  calcTotal();
 }
 
 function calcTotal(){
   const base = Number(document.getElementById('m-base').value)||0;
-  const pct = Number(document.getElementById('m-iva-pct').value)||0;
-  const iva = base*pct/100;
+  const ivaPct = Number(document.getElementById('m-iva-pct').value)||0;
+  const irpfPct = Number(document.getElementById('m-irpf-pct').value)||0;
+  const iva = base*ivaPct/100;
+  const irpf = base*irpfPct/100;
   document.getElementById('m-iva-import').value = fmtMoney(iva);
-  document.getElementById('m-total').value = fmtMoney(base+iva);
+  document.getElementById('m-irpf-import').value = fmtMoney(irpf);
+  document.getElementById('m-total').value = fmtMoney(base+iva-irpf);
 }
 
 function toggleDataPagament(){
@@ -266,36 +371,74 @@ function toggleDataPagament(){
 }
 
 function openModal(id){
+  duplicating = false;
   const r = id ? rows.find(x=>x.id===id) : null;
   document.getElementById('modal-title').textContent = r ? 'Editar factura' : 'Nova factura';
   document.getElementById('m-id').value = r ? r.id : '';
   document.getElementById('m-data').value = r ? r.data : todayStr();
-  document.getElementById('m-proveidor').value = r ? (r.proveidor||'') : '';
+  document.getElementById('m-num-factura').value = r ? (r.num_factura||'') : '';
+  populateProveidorSelect(r ? r.proveidor_id : (urlProveidorId||null));
   document.getElementById('m-concepte').value = r ? (r.concepte||'') : '';
   document.getElementById('m-base').value = r ? r.base : '';
   document.getElementById('m-iva-pct').value = r ? r.iva_pct : 21;
+  document.getElementById('m-irpf-pct').value = r ? (r.irpf_pct||0) : 0;
   document.getElementById('m-tipus-cost').value = r ? r.tipus_cost : 'variable';
   document.getElementById('m-pagat').checked = r ? r.pagat : false;
   document.getElementById('m-data-pagament').value = r ? (r.data_pagament||'') : '';
   document.getElementById('m-notes').value = r ? (r.notes||'') : '';
   document.getElementById('btn-del').style.display = r ? 'inline-flex' : 'none';
+  document.getElementById('m-hint').textContent = '';
   calcTotal();
   document.getElementById('modal-bg').classList.add('show');
 }
+
+function duplicarFactura(id){
+  const src = rows.find(x=>x.id===id);
+  if(!src) return;
+  duplicating = true;
+  document.getElementById('modal-title').textContent = 'Duplicar factura';
+  document.getElementById('m-id').value = '';
+  document.getElementById('m-data').value = todayStr();
+  document.getElementById('m-num-factura').value = '';
+  populateProveidorSelect(src.proveidor_id);
+  document.getElementById('m-concepte').value = src.concepte||'';
+  document.getElementById('m-base').value = src.base;
+  document.getElementById('m-iva-pct').value = src.iva_pct;
+  document.getElementById('m-irpf-pct').value = src.irpf_pct||0;
+  document.getElementById('m-tipus-cost').value = src.tipus_cost||'variable';
+  document.getElementById('m-pagat').checked = false;
+  document.getElementById('m-data-pagament').value = '';
+  document.getElementById('m-notes').value = src.notes||'';
+  document.getElementById('btn-del').style.display = 'none';
+  document.getElementById('m-hint').textContent = 'Revisa el número de factura, la data i l\'import abans de desar.';
+  calcTotal();
+  document.getElementById('modal-bg').classList.add('show');
+  setTimeout(()=>document.getElementById('m-num-factura').focus(),50);
+}
+
 function closeModal(){ document.getElementById('modal-bg').classList.remove('show'); }
 
 async function saveFactura(){
   const id = document.getElementById('m-id').value;
   const base = Number(document.getElementById('m-base').value)||0;
   const iva_pct = Number(document.getElementById('m-iva-pct').value)||0;
+  const irpf_pct = Number(document.getElementById('m-irpf-pct').value)||0;
   const ivaImport = base*iva_pct/100;
+  const irpfImport = base*irpf_pct/100;
+  const provSel = document.getElementById('m-proveidor-id');
+  const proveidorId = provSel.value && provSel.value!=='__new__' ? Number(provSel.value) : null;
+  const provObj = proveidorId ? proveidors.find(p=>p.id===proveidorId) : null;
   const data = {
     data: document.getElementById('m-data').value,
+    num_factura: document.getElementById('m-num-factura').value.trim() || null,
+    proveidor_id: proveidorId,
+    proveidor: provObj ? provObj.nom : null,
     concepte: document.getElementById('m-concepte').value.trim(),
-    proveidor: document.getElementById('m-proveidor').value.trim(),
     base, iva_pct,
     iva_import: Math.round(ivaImport*100)/100,
-    total: Math.round((base+ivaImport)*100)/100,
+    irpf_pct,
+    irpf_import: Math.round(irpfImport*100)/100,
+    total: Math.round((base+ivaImport-irpfImport)*100)/100,
     tipus_cost: document.getElementById('m-tipus-cost').value,
     pagat: document.getElementById('m-pagat').checked,
     data_pagament: document.getElementById('m-data-pagament').value || null,
@@ -304,7 +447,7 @@ async function saveFactura(){
   if(!data.data || !data.concepte){ toast('Data i concepte són obligatoris','err'); return; }
   try{
     if(id){ await sbPatch('factures_rebudes', id, data); toast('Factura actualitzada','ok'); }
-    else { await sbPost('factures_rebudes', data); toast('Factura creada','ok'); }
+    else { await sbPost('factures_rebudes', data); toast(duplicating?'Factura duplicada':'Factura creada','ok'); }
     closeModal();
     await load();
   }catch(e){ toast('Error desant: '+e.message,'err'); }
@@ -319,6 +462,19 @@ async function delFactura(){
     closeModal();
     await load();
   }catch(e){ toast('Error eliminant: '+e.message,'err'); }
+}
+
+async function anulaFactura(id){
+  const r = rows.find(x=>x.id===id);
+  if(!r || r.estat==='anullada') return;
+  if(!checkPin()){ toast('PIN incorrecte','err'); return; }
+  if(!confirm('Segur que vols anul·lar aquesta factura? Quedarà exclosa dels totals.')) return;
+  const motiu = prompt('Motiu de l\'anul·lació (opcional):') || null;
+  try{
+    await sbPatch('factures_rebudes', id, { estat:'anullada', data_anullacio: todayStr(), motiu_anullacio: motiu });
+    toast('Factura anul·lada','ok');
+    await load();
+  }catch(e){ toast('Error anul·lant: '+e.message,'err'); }
 }
 </script>
 </body>

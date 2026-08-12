@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard — Nòmines</title>
+<title>Dashboard — Clients</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -11,6 +11,7 @@
   --green:#1a8c42;--green-bg:#d4edda;--green-txt:#155724;
   --amber:#c96a10;--amber-bg:#ffe5d0;--amber-txt:#7c3d0f;
   --red:#c0392b;--red-bg:#f8d7da;--red-txt:#721c24;
+  --grey-bg:#e9ecef;--grey-txt:#495057;
   --bg:#FAF8F6;--white:#fff;--border:#dee2e6;--border-light:#eaeef2;
   --text:#212529;--muted:#6c757d;
   --sidebar:220px;--topbar:58px;--r:6px;
@@ -49,7 +50,7 @@ tbody tr:hover{background:var(--blue-light)}
 .num{text-align:right;font-variant-numeric:tabular-nums}
 .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
 .badge.ok{background:var(--green-bg);color:var(--green-txt)}
-.badge.pend{background:var(--amber-bg);color:var(--amber-txt)}
+.badge.off{background:var(--grey-bg);color:var(--grey-txt)}
 .row-act{display:flex;gap:6px}
 .icon-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:3px 6px;border-radius:4px}
 .icon-btn:hover{background:#eee}
@@ -90,10 +91,10 @@ tbody tr:hover{background:var(--blue-light)}
     <div class="nav-section">Facturació</div>
     <div class="nav-item" onclick="location.href='factures-emeses.html'"><span class="ico">🧾</span> Factures emeses</div>
     <div class="nav-item" onclick="location.href='factures-rebudes.html'"><span class="ico">📥</span> Factures rebudes</div>
-    <div class="nav-item" onclick="location.href='clients.html'"><span class="ico">🗂️</span> Clients</div>
+    <div class="nav-item active" onclick="location.href='clients.html'"><span class="ico">🗂️</span> Clients</div>
     <div class="nav-item" onclick="location.href='proveidors.html'"><span class="ico">🏭</span> Proveïdors</div>
     <div class="nav-section">Personal i finançament</div>
-    <div class="nav-item active" onclick="location.href='nomines.html'"><span class="ico">👥</span> Nòmines</div>
+    <div class="nav-item" onclick="location.href='nomines.html'"><span class="ico">👥</span> Nòmines</div>
     <div class="nav-item" onclick="location.href='prestecs.html'"><span class="ico">🏦</span> Préstecs</div>
     <div class="nav-section">Anàlisi</div>
     <div class="nav-item" onclick="location.href='reports.html'"><span class="ico">📈</span> Reports</div>
@@ -102,36 +103,36 @@ tbody tr:hover{background:var(--blue-light)}
 </nav>
 <main id="main">
   <header id="topbar">
-    <h1>Nòmines</h1>
+    <h1>Clients</h1>
     <span id="user-email" style="font-size:12px;color:var(--muted);margin-right:4px"></span>
     <button class="btn btn-secondary btn-sm" onclick="doLogout()">⏻ Sortir</button>
   </header>
   <div id="content">
     <div class="kpi-grid">
-      <div class="kpi"><div class="kpi-label">Cost total empresa</div><div class="kpi-val" id="kpi-cost">—</div></div>
-      <div class="kpi g"><div class="kpi-label">Net pagat</div><div class="kpi-val" id="kpi-pagat">—</div></div>
-      <div class="kpi a"><div class="kpi-label">Net pendent</div><div class="kpi-val" id="kpi-pendent">—</div></div>
+      <div class="kpi"><div class="kpi-label">Clients actius</div><div class="kpi-val" id="kpi-actius">—</div></div>
+      <div class="kpi g"><div class="kpi-label">Facturat (any actual)</div><div class="kpi-val" id="kpi-facturat">—</div></div>
+      <div class="kpi a"><div class="kpi-label">Pendent de cobrar</div><div class="kpi-val" id="kpi-pendent">—</div></div>
     </div>
     <div class="toolbar">
-      <select id="f-any" onchange="render()"></select>
       <select id="f-estat" onchange="render()">
-        <option value="">Tots els estats</option>
-        <option value="pagat">Pagades</option>
-        <option value="pendent">Pendents</option>
+        <option value="">Tots</option>
+        <option value="actiu">Actius</option>
+        <option value="inactiu">Inactius</option>
       </select>
-      <input type="text" id="f-cerca" placeholder="Cerca empleat..." oninput="render()">
-      <button class="btn btn-primary" onclick="openModal()">+ Nova nòmina</button>
+      <input type="text" id="f-cerca" placeholder="Cerca nom o NIF..." oninput="render()">
+      <button class="btn btn-primary" onclick="openModal()">+ Nou client</button>
     </div>
     <div class="card">
       <table>
         <thead><tr>
-          <th>Data</th><th>Empleat</th>
-          <th class="num">Brut</th><th class="num">SS empresa</th><th class="num">IRPF</th><th class="num">Net</th>
-          <th>Estat</th><th>Pagament</th><th></th>
+          <th>Nom</th><th>NIF</th><th>Contacte</th>
+          <th class="num">IVA %</th><th class="num">IRPF %</th>
+          <th class="num">Facturat</th><th class="num">Pendent</th>
+          <th>Estat</th><th></th>
         </tr></thead>
         <tbody id="tbody"></tbody>
       </table>
-      <div class="empty" id="empty" style="display:none">Cap nòmina registrada.</div>
+      <div class="empty" id="empty" style="display:none">Cap client registrat.</div>
     </div>
   </div>
 </main>
@@ -140,31 +141,29 @@ tbody tr:hover{background:var(--blue-light)}
 
 <div class="modal-bg" id="modal-bg">
   <div class="modal">
-    <div class="modal-hdr"><h3 id="modal-title">Nova nòmina</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-hdr"><h3 id="modal-title">Nou client</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
       <input type="hidden" id="m-id">
+      <div class="fg"><label>Nom</label><input type="text" id="m-nom"></div>
       <div class="fg-row">
-        <div class="fg"><label>Data</label><input type="date" id="m-data"></div>
-        <div class="fg"><label>Empleat</label><input type="text" id="m-empleat"></div>
+        <div class="fg"><label>NIF</label><input type="text" id="m-nif"></div>
+        <div class="fg"><label>Telèfon</label><input type="text" id="m-telefon"></div>
       </div>
       <div class="fg-row">
-        <div class="fg"><label>Import brut</label><input type="number" step="0.01" id="m-brut" oninput="calcNet()"></div>
-        <div class="fg"><label>SS empresa</label><input type="number" step="0.01" id="m-ss" oninput="calcNet()"></div>
+        <div class="fg"><label>Email</label><input type="email" id="m-email"></div>
+        <div class="fg"><label>Adreça</label><input type="text" id="m-adreca"></div>
       </div>
       <div class="fg-row">
-        <div class="fg"><label>IRPF</label><input type="number" step="0.01" id="m-irpf" oninput="calcNet()"></div>
-        <div class="fg"><label>Net a pagar</label><input type="text" id="m-net" disabled></div>
-      </div>
-      <div class="fg-row">
-        <div class="fg fg-check"><input type="checkbox" id="m-pagat" onchange="toggleDataPagament()"><label style="margin:0">Pagat</label></div>
-        <div class="fg"><label>Data pagament</label><input type="date" id="m-data-pagament"></div>
+        <div class="fg"><label>IVA % per defecte</label><input type="number" step="0.01" id="m-iva-pct" value="21"></div>
+        <div class="fg"><label>IRPF % per defecte</label><input type="number" step="0.01" id="m-irpf-pct" value="0"></div>
       </div>
       <div class="fg"><label>Notes</label><textarea id="m-notes" rows="2"></textarea></div>
+      <div class="fg fg-check"><input type="checkbox" id="m-actiu" checked><label style="margin:0">Actiu</label></div>
     </div>
     <div class="modal-ftr">
-      <button class="btn btn-secondary" id="btn-del" style="display:none;margin-right:auto;background:var(--red-bg);color:var(--red-txt)" onclick="delNomina()">🗑 Eliminar</button>
+      <button class="btn btn-secondary" id="btn-veure-fra" style="display:none;margin-right:auto" onclick="veureFactures()">🧾 Veure factures</button>
       <button class="btn btn-secondary" onclick="closeModal()">Cancel·lar</button>
-      <button class="btn btn-primary" onclick="saveNomina()">Desar</button>
+      <button class="btn btn-primary" onclick="saveClient()">Desar</button>
     </div>
   </div>
 </div>
@@ -172,10 +171,10 @@ tbody tr:hover{background:var(--blue-light)}
 <script src="js/neon-client.js"></script>
 <script>
 let rows = [];
+let facturesCache = [];
 if(requireAuth()) load();
 
 function fmtMoney(n){ return (Number(n)||0).toLocaleString('ca-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
-function fmtDate(d){ if(!d) return '—'; return new Date(d+'T00:00:00').toLocaleDateString('ca-ES'); }
 function toast(msg,type='inf'){
   const el=document.createElement('div'); el.className='toast '+type; el.textContent=msg;
   document.getElementById('toast').appendChild(el); setTimeout(()=>el.remove(),3500);
@@ -183,121 +182,104 @@ function toast(msg,type='inf'){
 
 async function load(){
   try{
-    rows = await sbGet('nomines','select=*&order=data.desc');
-    fillAnys();
+    [rows, facturesCache] = await Promise.all([
+      sbGet('clients','select=*&order=nom.asc'),
+      sbGet('factures_emeses','select=client_id,total,cobrat,estat,data')
+    ]);
     render();
   }catch(e){ toast('Error carregant: '+e.message,'err'); }
 }
 
-function fillAnys(){
-  const sel = document.getElementById('f-any');
-  const anys = [...new Set(rows.map(r=>r.data.slice(0,4)))].sort((a,b)=>b-a);
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">Tots els anys</option>' + anys.map(a=>`<option value="${a}">${a}</option>`).join('');
-  if(anys.includes(cur)) sel.value = cur;
+function statsFor(clientId){
+  const any = String(new Date().getFullYear());
+  const fs = facturesCache.filter(f=>f.client_id===clientId && f.estat!=='anullada');
+  const facturat = fs.filter(f=>f.data && f.data.startsWith(any)).reduce((s,f)=>s+Number(f.total),0);
+  const pendent = fs.filter(f=>!f.cobrat).reduce((s,f)=>s+Number(f.total),0);
+  return { facturat, pendent };
 }
 
 function render(){
-  const any = document.getElementById('f-any').value;
   const estat = document.getElementById('f-estat').value;
   const cerca = document.getElementById('f-cerca').value.toLowerCase();
 
   let filtered = rows.filter(r=>{
-    if(any && !r.data.startsWith(any)) return false;
-    if(estat==='pagat' && !r.pagat) return false;
-    if(estat==='pendent' && r.pagat) return false;
-    if(cerca && !(r.empleat||'').toLowerCase().includes(cerca)) return false;
+    if(estat==='actiu' && !r.actiu) return false;
+    if(estat==='inactiu' && r.actiu) return false;
+    if(cerca && !((r.nom||'')+(r.nif||'')).toLowerCase().includes(cerca)) return false;
     return true;
   });
 
-  const cost = filtered.reduce((s,r)=>s+Number(r.import_brut)+Number(r.ss_empresa),0);
-  const netPagat = filtered.filter(r=>r.pagat).reduce((s,r)=>s+Number(r.import_net),0);
-  const netPendent = filtered.filter(r=>!r.pagat).reduce((s,r)=>s+Number(r.import_net),0);
-  document.getElementById('kpi-cost').textContent = fmtMoney(cost);
-  document.getElementById('kpi-pagat').textContent = fmtMoney(netPagat);
-  document.getElementById('kpi-pendent').textContent = fmtMoney(netPendent);
+  let facturatTotal=0, pendentTotal=0;
+  rows.forEach(r=>{ const s=statsFor(r.id); facturatTotal+=s.facturat; pendentTotal+=s.pendent; });
+  document.getElementById('kpi-actius').textContent = rows.filter(r=>r.actiu).length;
+  document.getElementById('kpi-facturat').textContent = fmtMoney(facturatTotal);
+  document.getElementById('kpi-pendent').textContent = fmtMoney(pendentTotal);
 
   const tbody = document.getElementById('tbody');
   document.getElementById('empty').style.display = filtered.length ? 'none':'block';
-  tbody.innerHTML = filtered.map(r=>`
-    <tr>
-      <td>${fmtDate(r.data)}</td>
-      <td>${r.empleat||''}</td>
-      <td class="num">${fmtMoney(r.import_brut)}</td>
-      <td class="num">${fmtMoney(r.ss_empresa)}</td>
-      <td class="num">${fmtMoney(r.irpf)}</td>
-      <td class="num"><strong>${fmtMoney(r.import_net)}</strong></td>
-      <td>${r.pagat?'<span class="badge ok">Pagat</span>':'<span class="badge pend">Pendent</span>'}</td>
-      <td>${fmtDate(r.data_pagament)}</td>
+  tbody.innerHTML = filtered.map(r=>{
+    const s = statsFor(r.id);
+    return `<tr>
+      <td><strong>${r.nom||''}</strong></td>
+      <td>${r.nif||'—'}</td>
+      <td style="font-size:12px">${[r.telefon,r.email].filter(Boolean).join(' · ')||'—'}</td>
+      <td class="num">${r.iva_pct??21}%</td>
+      <td class="num">${r.irpf_pct??0}%</td>
+      <td class="num">${fmtMoney(s.facturat)}</td>
+      <td class="num">${fmtMoney(s.pendent)}</td>
+      <td>${r.actiu?'<span class="badge ok">Actiu</span>':'<span class="badge off">Inactiu</span>'}</td>
       <td class="row-act">
+        <button class="icon-btn" onclick="location.href='factures-emeses.html?client_id=${r.id}'" title="Veure factures">🧾</button>
         <button class="icon-btn" onclick="openModal(${r.id})" title="Editar">✏️</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
-function calcNet(){
-  const brut = Number(document.getElementById('m-brut').value)||0;
-  const irpf = Number(document.getElementById('m-irpf').value)||0;
-  document.getElementById('m-net').value = fmtMoney(brut-irpf);
-}
-
-function toggleDataPagament(){
-  const chk = document.getElementById('m-pagat').checked;
-  if(chk && !document.getElementById('m-data-pagament').value){
-    document.getElementById('m-data-pagament').value = todayStr();
-  }
-}
-
+let curId = null;
 function openModal(id){
+  curId = id || null;
   const r = id ? rows.find(x=>x.id===id) : null;
-  document.getElementById('modal-title').textContent = r ? 'Editar nòmina' : 'Nova nòmina';
+  document.getElementById('modal-title').textContent = r ? 'Editar client' : 'Nou client';
   document.getElementById('m-id').value = r ? r.id : '';
-  document.getElementById('m-data').value = r ? r.data : todayStr();
-  document.getElementById('m-empleat').value = r ? (r.empleat||'') : '';
-  document.getElementById('m-brut').value = r ? r.import_brut : '';
-  document.getElementById('m-ss').value = r ? r.ss_empresa : '';
-  document.getElementById('m-irpf').value = r ? r.irpf : '';
-  document.getElementById('m-pagat').checked = r ? r.pagat : false;
-  document.getElementById('m-data-pagament').value = r ? (r.data_pagament||'') : '';
+  document.getElementById('m-nom').value = r ? (r.nom||'') : '';
+  document.getElementById('m-nif').value = r ? (r.nif||'') : '';
+  document.getElementById('m-telefon').value = r ? (r.telefon||'') : '';
+  document.getElementById('m-email').value = r ? (r.email||'') : '';
+  document.getElementById('m-adreca').value = r ? (r.adreca||'') : '';
+  document.getElementById('m-iva-pct').value = r ? (r.iva_pct??21) : 21;
+  document.getElementById('m-irpf-pct').value = r ? (r.irpf_pct??0) : 0;
   document.getElementById('m-notes').value = r ? (r.notes||'') : '';
-  document.getElementById('btn-del').style.display = r ? 'inline-flex' : 'none';
-  calcNet();
+  document.getElementById('m-actiu').checked = r ? r.actiu : true;
+  document.getElementById('btn-veure-fra').style.display = r ? 'inline-flex' : 'none';
   document.getElementById('modal-bg').classList.add('show');
 }
-function closeModal(){ document.getElementById('modal-bg').classList.remove('show'); }
+function closeModal(){ document.getElementById('modal-bg').classList.remove('show'); curId=null; }
 
-async function saveNomina(){
+function veureFactures(){
+  if(curId) location.href = 'factures-emeses.html?client_id='+curId;
+}
+
+async function saveClient(){
   const id = document.getElementById('m-id').value;
-  const import_brut = Number(document.getElementById('m-brut').value)||0;
-  const ss_empresa = Number(document.getElementById('m-ss').value)||0;
-  const irpf = Number(document.getElementById('m-irpf').value)||0;
   const data = {
-    data: document.getElementById('m-data').value,
-    empleat: document.getElementById('m-empleat').value.trim(),
-    import_brut, ss_empresa, irpf,
-    import_net: Math.round((import_brut-irpf)*100)/100,
-    pagat: document.getElementById('m-pagat').checked,
-    data_pagament: document.getElementById('m-data-pagament').value || null,
-    notes: document.getElementById('m-notes').value.trim() || null
+    nom: document.getElementById('m-nom').value.trim(),
+    nif: document.getElementById('m-nif').value.trim() || null,
+    telefon: document.getElementById('m-telefon').value.trim() || null,
+    email: document.getElementById('m-email').value.trim() || null,
+    adreca: document.getElementById('m-adreca').value.trim() || null,
+    iva_pct: Number(document.getElementById('m-iva-pct').value)||0,
+    irpf_pct: Number(document.getElementById('m-irpf-pct').value)||0,
+    notes: document.getElementById('m-notes').value.trim() || null,
+    actiu: document.getElementById('m-actiu').checked
   };
-  if(!data.data || !data.empleat){ toast('Data i empleat són obligatoris','err'); return; }
+  if(!data.nom){ toast('El nom és obligatori','err'); return; }
   try{
-    if(id){ await sbPatch('nomines', id, data); toast('Nòmina actualitzada','ok'); }
-    else { await sbPost('nomines', data); toast('Nòmina creada','ok'); }
+    if(id){ await sbPatch('clients', id, data); toast('Client actualitzat','ok'); }
+    else { await sbPost('clients', data); toast('Client creat','ok'); }
     closeModal();
     await load();
   }catch(e){ toast('Error desant: '+e.message,'err'); }
-}
-
-async function delNomina(){
-  const id = document.getElementById('m-id').value;
-  if(!id || !confirm('Segur que vols eliminar aquesta nòmina?')) return;
-  try{
-    await sbDel('nomines', id);
-    toast('Nòmina eliminada','ok');
-    closeModal();
-    await load();
-  }catch(e){ toast('Error eliminant: '+e.message,'err'); }
 }
 </script>
 </body>

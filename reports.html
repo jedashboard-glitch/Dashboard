@@ -78,6 +78,8 @@ tbody tr.section td:first-child{font-weight:700;color:var(--muted);padding-top:1
     <div class="nav-section">Facturació</div>
     <div class="nav-item" onclick="location.href='factures-emeses.html'"><span class="ico">🧾</span> Factures emeses</div>
     <div class="nav-item" onclick="location.href='factures-rebudes.html'"><span class="ico">📥</span> Factures rebudes</div>
+    <div class="nav-item" onclick="location.href='clients.html'"><span class="ico">🗂️</span> Clients</div>
+    <div class="nav-item" onclick="location.href='proveidors.html'"><span class="ico">🏭</span> Proveïdors</div>
     <div class="nav-section">Personal i finançament</div>
     <div class="nav-item" onclick="location.href='nomines.html'"><span class="ico">👥</span> Nòmines</div>
     <div class="nav-item" onclick="location.href='prestecs.html'"><span class="ico">🏦</span> Préstecs</div>
@@ -126,12 +128,16 @@ function toast(msg,type='inf'){
 
 async function load(){
   try{
-    [emeses, rebudes, nomines, quotes] = await Promise.all([
+    let rebudesRaw;
+    [emeses, rebudesRaw, nomines, quotes] = await Promise.all([
       sbGet('factures_emeses','select=*'),
       sbGet('factures_rebudes','select=*'),
       sbGet('nomines','select=*'),
       sbGet('prestec_quotes','select=*')
     ]);
+    // Les factures anul·lades no compten en cap report (igual que a la resta del Dashboard).
+    emeses = emeses.filter(r=>r.estat!=='anullada');
+    rebudes = rebudesRaw.filter(r=>r.estat!=='anullada');
     fillAnys();
     renderAll();
   }catch(e){ toast('Error carregant: '+e.message,'err'); }
