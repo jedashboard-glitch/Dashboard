@@ -239,9 +239,22 @@ function render(){
       <td class="row-act">
         <button class="icon-btn" onclick="location.href='factures-rebudes.html?proveidor_id=${r.id}'" title="Veure factures">📥</button>
         <button class="icon-btn" onclick="openModal(${r.id})" title="Editar">✏️</button>
+        <button class="icon-btn" onclick="anulaProveidor(${r.id})" title="Anul·lar" ${!r.actiu?'disabled':''}>🚫</button>
       </td>
     </tr>`;
   }).join('');
+}
+
+async function anulaProveidor(id){
+  const r = rows.find(x=>x.id===id);
+  if(!r || !r.actiu) return;
+  if(!checkPin()){ toast('PIN incorrecte','err'); return; }
+  if(!confirm(`Segur que vols anul·lar el proveïdor "${r.nom}"? Quedarà marcat com a inactiu.`)) return;
+  try{
+    await sbPatch('proveidors', id, { actiu:false });
+    toast('Proveïdor anul·lat','ok');
+    await load();
+  }catch(e){ toast('Error anul·lant: '+e.message,'err'); }
 }
 
 let curId = null;

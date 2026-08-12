@@ -137,7 +137,7 @@ tbody tr.void{opacity:.55}
       <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>Data</th><th>Núm.</th><th>Concepte</th><th>Client</th>
+          <th>Client</th><th>Núm.</th><th>Data</th><th>Concepte</th>
           <th class="num">Base</th><th class="num">IVA</th><th class="num">IRPF</th><th class="num">Total</th>
           <th>Estat</th><th>Cobrament</th><th></th>
         </tr></thead>
@@ -280,10 +280,10 @@ function render(){
     let estatBadge = isVoid ? '<span class="badge void">Anul·lada</span>'
       : (r.cobrat?'<span class="badge ok">Cobrat</span>':'<span class="badge pend">Pendent</span>');
     return `<tr class="${isVoid?'void':''}">
-      <td>${fmtDate(r.data)}</td>
-      <td>${r.num_factura||'—'}</td>
-      <td>${r.concepte||''}</td>
       <td>${r.client||''}</td>
+      <td>${r.num_factura||'—'}</td>
+      <td>${fmtDate(r.data)}</td>
+      <td>${r.concepte||''}</td>
       <td class="num">${fmtMoney(r.base)}</td>
       <td class="num">${fmtMoney(r.iva_import)}</td>
       <td class="num">${fmtMoney(r.irpf_import)}</td>
