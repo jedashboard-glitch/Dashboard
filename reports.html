@@ -170,7 +170,7 @@ tbody tr.section td:first-child{font-weight:700;color:var(--muted);padding-top:1
 <script src="js/neon-client.js"></script>
 <script>
 const MESOS = ['Gen','Feb','Mar','Abr','Mai','Jun','Jul','Ago','Set','Oct','Nov','Des'];
-let emeses=[], rebudes=[], nomines=[], quotes=[], previsions=[], ajornaments=[], ssAjornaments=[];
+let emeses=[], rebudes=[], nomines=[], quotes=[], previsions=[], ajornaments=[], ssAjornaments=[], saldoInicials=[];
 
 if(requireAuth()) load();
 
@@ -184,14 +184,15 @@ function toast(msg,type='inf'){
 async function load(){
   try{
     let rebudesRaw;
-    [emeses, rebudesRaw, nomines, quotes, previsions, ajornaments, ssAjornaments] = await Promise.all([
+    [emeses, rebudesRaw, nomines, quotes, previsions, ajornaments, ssAjornaments, saldoInicials] = await Promise.all([
       sbGet('factures_emeses','select=*'),
       sbGet('factures_rebudes','select=*'),
       sbGet('nomines','select=*'),
       sbGet('prestec_quotes','select=*'),
       sbGet('previsions_tresoreria','select=*&order=data.asc'),
       sbGet('iva_ajornaments','select=*'),
-      sbGet('ss_ajornaments','select=*')
+      sbGet('ss_ajornaments','select=*'),
+      sbGet('saldo_inicial_tresoreria','select=*')
     ]);
     // Les factures anul·lades no compten en cap report (igual que a la resta del Dashboard).
     emeses = emeses.filter(r=>r.estat!=='anullada');
@@ -426,8 +427,11 @@ function renderTresoreria(year){
   const totalPagaments = prevPagament.reduce((acc,g)=>addArr(acc,g.valors),
     [pagFactures,ivaTrimestral,irpf111,pagNomines,ssTrab,ssEmpresa,pagQuotes].reduce(addArr));
   const saldoMes = subArr(totalCobraments, totalPagaments);
-  const saldoAcum = [];
-  saldoMes.reduce((acc,v,i)=>{ const t=acc+v; saldoAcum[i]=t; return t; },0);
+
+  const saldoInicialAny = Number((saldoInicials.find(s=>s.any_liquidacio===Number(year))||{}).import || 0);
+  const saldoInicialRow = [], saldoFinalRow = [];
+  let running = saldoInicialAny;
+  saldoMes.forEach((v,i)=>{ saldoInicialRow[i]=running; running+=v; saldoFinalRow[i]=running; });
 
   const head = '<th></th>'+MESOS.map(m=>`<th>${m}</th>`).join('')+'<th>Total</th>';
   const blankRow = MESOS.map(()=>'<td></td>').join('');
@@ -436,11 +440,12 @@ function renderTresoreria(year){
 
   document.getElementById('tab-tresoreria').innerHTML = `
     <div class="card">
-      <div class="card-hdr"><h3>Moviments de tresoreria ${year} (criteri de caixa)</h3></div>
+      <div class="card-hdr"><h3>Moviments de tresoreria ${year} (criteri de caixa)</h3><button class="btn btn-secondary" onclick="editSaldoInicial('${year}')">✏️ Saldo inicial</button></div>
       <div style="overflow-x:auto">
       <table>
         <thead><tr>${head}</tr></thead>
         <tbody>
+          ${rowHTML('Saldo inicial', saldoInicialRow, {cls:'total'})}
           ${rowHTML('Cobraments (factures emeses)', cobraments)}
           ${prevRowsCobrament}
           <tr class="section"><td>Pagaments</td>${blankRow}<td></td></tr>
@@ -456,17 +461,33 @@ function renderTresoreria(year){
           ${rowHTML('Quotes de préstecs', pagQuotes.map(v=>-v))}
           ${prevRowsPagament}
           ${rowHTML('Saldo del mes', saldoMes, {cls:'total'})}
-          ${rowHTML('Saldo acumulat', saldoAcum, {cls:'result'})}
+          ${rowHTML('Saldo final', saldoFinalRow, {cls:'result'})}
         </tbody>
       </table>
       </div>
-      <p class="muted-note">El saldo acumulat és relatiu als moviments registrats aquest any (no inclou el saldo bancari inicial). La liquidació d'IVA i l'IRPF/111 no compensen saldos negatius entre períodes. Les línies de previsió són manuals — quan la factura/cobrament real es registri, recorda ajustar o eliminar la previsió corresponent.</p>
+      <p class="muted-note">El Saldo inicial de gener és editable ("✏️ Saldo inicial" de dalt) i correspon al saldo bancari real a 1 de gener de ${year}; els mesos següents l'arrosseguen sols des del Saldo final anterior. La liquidació d'IVA i l'IRPF/111 no compensen saldos negatius entre períodes. Les línies de previsió són manuals — quan la factura/cobrament real es registri, recorda ajustar o eliminar la previsió corresponent.</p>
     </div>
 
     ${renderIvaQuarters(year)}
     ${renderSSMonths(year)}
     ${renderPrevisionsPanel(year)}
   `;
+}
+
+async function editSaldoInicial(year){
+  const y = Number(year);
+  const current = Number((saldoInicials.find(s=>s.any_liquidacio===y)||{}).import || 0);
+  const input = prompt(`Saldo bancari real a 1 de gener de ${y}:`, current);
+  if(input===null) return;
+  const value = Number(input.replace(',','.'));
+  if(Number.isNaN(value)){ toast('Import no vàlid','err'); return; }
+  try{
+    await sbDelWhereCompound('saldo_inicial_tresoreria', { any_liquidacio: y });
+    await sbPost('saldo_inicial_tresoreria', { any_liquidacio: y, import: value });
+    saldoInicials = await sbGet('saldo_inicial_tresoreria','select=*');
+    toast('Saldo inicial desat','ok');
+    renderAll();
+  }catch(e){ toast('Error desant: '+e.message,'err'); }
 }
 
 function renderSSMonths(year){
