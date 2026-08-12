@@ -145,7 +145,7 @@ tbody tr.void{opacity:.55}
       <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>Proveïdor</th><th>Núm.</th><th>Data</th><th>Concepte</th>
+          <th>Proveïdor</th><th>Núm.</th><th>Núm. sèrie</th><th>Data</th><th>Concepte</th>
           <th class="num">Base</th><th class="num">IVA</th><th class="num">IRPF</th><th class="num">Total</th>
           <th>Tipus</th><th>Estat</th><th>Pagament</th><th></th>
         </tr></thead>
@@ -168,7 +168,10 @@ tbody tr.void{opacity:.55}
         <div class="fg"><label>Data</label><input type="date" id="m-data"></div>
         <div class="fg"><label>Data termini</label><input type="date" id="m-data-termini"></div>
       </div>
-      <div class="fg"><label>Núm. factura</label><input type="text" id="m-num-factura"></div>
+      <div class="fg-row">
+        <div class="fg"><label>Núm. factura</label><input type="text" id="m-num-factura"></div>
+        <div class="fg"><label>Núm. sèrie</label><input type="text" id="m-numero-serie" disabled></div>
+      </div>
       <div class="fg">
         <label>Proveïdor</label>
         <select id="m-proveidor-id" onchange="onProveidorChange()"></select>
@@ -300,6 +303,7 @@ function render(){
     return `<tr class="${isVoid?'void':''}">
       <td>${r.proveidor||''}</td>
       <td>${r.num_factura||'—'}</td>
+      <td>${r.numero_serie||'—'}</td>
       <td>${fmtDate(r.data)}</td>
       <td>${r.concepte||''}</td>
       <td class="num">${fmtMoney(r.base)}</td>
@@ -380,6 +384,7 @@ function openModal(id){
   document.getElementById('m-data').value = r ? r.data : todayStr();
   document.getElementById('m-data-termini').value = r ? (r.data_termini||r.data) : todayStr();
   document.getElementById('m-num-factura').value = r ? (r.num_factura||'') : '';
+  document.getElementById('m-numero-serie').value = r ? (r.numero_serie||'—') : '(es generarà en desar)';
   populateProveidorSelect(r ? r.proveidor_id : (urlProveidorId||null));
   document.getElementById('m-concepte').value = r ? (r.concepte||'') : '';
   document.getElementById('m-base').value = r ? r.base : '';
@@ -404,6 +409,7 @@ function duplicarFactura(id){
   document.getElementById('m-data').value = todayStr();
   document.getElementById('m-data-termini').value = todayStr();
   document.getElementById('m-num-factura').value = '';
+  document.getElementById('m-numero-serie').value = '(es generarà en desar)';
   populateProveidorSelect(src.proveidor_id);
   document.getElementById('m-concepte').value = src.concepte||'';
   document.getElementById('m-base').value = src.base;
@@ -422,6 +428,19 @@ function duplicarFactura(id){
 
 function closeModal(){ document.getElementById('modal-bg').classList.remove('show'); }
 
+// Número de sèrie intern: {mes}{seqüencial 4 xifres}, reiniciat cada mes/any.
+// Independent del "Núm. factura" (el número del proveïdor, lliure).
+function nextNumeroSerie(dataStr){
+  const y = Number(dataStr.slice(0,4)), m = Number(dataStr.slice(5,7));
+  const maxSeq = rows.reduce((max,r)=>{
+    if(!r.numero_serie || !r.data) return max;
+    const ry = Number(r.data.slice(0,4)), rm = Number(r.data.slice(5,7));
+    if(ry!==y || rm!==m) return max;
+    return Math.max(max, Number(r.numero_serie)%10000);
+  }, 0);
+  return String(m) + String(maxSeq+1).padStart(4,'0');
+}
+
 async function saveFactura(){
   const id = document.getElementById('m-id').value;
   const base = Number(document.getElementById('m-base').value)||0;
@@ -436,6 +455,7 @@ async function saveFactura(){
     data: document.getElementById('m-data').value,
     data_termini: document.getElementById('m-data-termini').value || null,
     num_factura: document.getElementById('m-num-factura').value.trim() || null,
+    ...(id ? {} : { numero_serie: nextNumeroSerie(document.getElementById('m-data').value) }),
     proveidor_id: proveidorId,
     proveidor: provObj ? provObj.nom : null,
     concepte: document.getElementById('m-concepte').value.trim(),
@@ -476,9 +496,26 @@ async function cancelarFactura(id){
   if(!confirm('Segur que vols cancel·lar aquesta factura? S\'eliminarà del tot i no es pot desfer.')) return;
   try{
     await sbDel('factures_rebudes', id);
+    await renumerarPosteriors(r);
     toast('Factura cancel·lada','ok');
     await load();
   }catch(e){ toast('Error cancel·lant: '+e.message,'err'); }
+}
+
+// Resta 1 al número de sèrie de totes les factures del mateix mes/any amb
+// número superior al de la factura cancel·lada, perquè la sèrie quedi sense forats.
+async function renumerarPosteriors(cancelada){
+  if(!cancelada.numero_serie || !cancelada.data) return;
+  const y = Number(cancelada.data.slice(0,4)), m = Number(cancelada.data.slice(5,7));
+  const seqCancelada = Number(cancelada.numero_serie)%10000;
+  const afectades = rows.filter(x=>x.id!==cancelada.id && x.numero_serie && x.data
+    && Number(x.data.slice(0,4))===y && Number(x.data.slice(5,7))===m
+    && (Number(x.numero_serie)%10000) > seqCancelada
+  ).sort((a,b)=>(Number(a.numero_serie)%10000)-(Number(b.numero_serie)%10000));
+  for(const x of afectades){
+    const novaSeq = (Number(x.numero_serie)%10000) - 1;
+    await sbPatch('factures_rebudes', x.id, { numero_serie: String(m)+String(novaSeq).padStart(4,'0') });
+  }
 }
 </script>
 </body>
