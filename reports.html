@@ -174,8 +174,8 @@ let emeses=[], rebudes=[], nomines=[], quotes=[], previsions=[], ajornaments=[],
 
 if(requireAuth()) load();
 
-function fmtMoney(n){ return (Number(n)||0).toLocaleString('ca-ES',{minimumFractionDigits:0,maximumFractionDigits:0})+' €'; }
-function fmtMoney2(n){ return (Number(n)||0).toLocaleString('ca-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+function fmtMoney(n){ return (Number(n)||0).toLocaleString('ca-ES',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+const fmtMoney2 = fmtMoney;
 function toast(msg,type='inf'){
   const el=document.createElement('div'); el.className='toast '+type; el.textContent=msg;
   document.getElementById('toast').appendChild(el); setTimeout(()=>el.remove(),3500);

@@ -175,7 +175,7 @@ tbody tr:hover{background:var(--blue-light)}
 let rows = [];
 if(requireAuth()) load();
 
-function fmtMoney(n){ return (Number(n)||0).toLocaleString('ca-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+function fmtMoney(n){ return (Number(n)||0).toLocaleString('ca-ES',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtDate(d){ if(!d) return '—'; return new Date(d+'T00:00:00').toLocaleDateString('ca-ES'); }
 function toast(msg,type='inf'){
   const el=document.createElement('div'); el.className='toast '+type; el.textContent=msg;
