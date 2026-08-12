@@ -64,6 +64,30 @@ tbody tr.section td:first-child{font-weight:700;color:var(--muted);padding-top:1
 .toast.ok{background:var(--green)}.toast.err{background:var(--red)}.toast.inf{background:var(--blue)}
 @keyframes tin{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
 .muted-note{font-size:11.5px;color:var(--muted);padding:10px 18px}
+.card-hdr{display:flex;align-items:center;gap:10px}
+.card-hdr h3{flex:1}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--r);border:none;cursor:pointer;font-size:12.5px;font-weight:600}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--blue-mid)}
+.btn-secondary{background:#fff;color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{background:#f3f4f6}
+.prev-tbl th:first-child,.prev-tbl td:first-child{text-align:left}
+.prev-tbl td,.prev-tbl th{text-align:left}
+.prev-tbl td.num,.prev-tbl th.num{text-align:right}
+.row-act{display:flex;gap:6px;justify-content:flex-end}
+.icon-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:3px 6px;border-radius:4px}
+.icon-btn:hover{background:#eee}
+.empty{text-align:center;padding:24px;color:var(--muted);font-size:12.5px}
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:100}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:10px;width:440px;max-width:92vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.3)}
+.modal-hdr{padding:18px 22px;border-bottom:1px solid var(--border-light);display:flex;align-items:center}
+.modal-hdr h3{flex:1;font-size:16px}
+.modal-body{padding:20px 22px;display:flex;flex-direction:column;gap:14px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.fg input,.fg select,.fg textarea{padding:9px 11px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-ftr{padding:16px 22px;border-top:1px solid var(--border-light);display:flex;justify-content:flex-end;gap:10px}
 </style>
 </head>
 <body>
@@ -112,10 +136,41 @@ tbody tr.section td:first-child{font-weight:700;color:var(--muted);padding-top:1
 </div>
 <div id="toast"></div>
 
+<datalist id="etiquetes-existents"></datalist>
+<div class="modal-bg" id="prev-modal-bg">
+  <div class="modal">
+    <div class="modal-hdr"><h3 id="prev-modal-title">Nova previsió</h3><button class="icon-btn" onclick="closePrevisioModal()">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="p-id">
+      <div class="fg">
+        <label>Etiqueta</label>
+        <input type="text" id="p-etiqueta" list="etiquetes-existents" placeholder="p.ex. Clients previsió">
+      </div>
+      <div class="fg-row">
+        <div class="fg">
+          <label>Tipus</label>
+          <select id="p-tipus">
+            <option value="cobrament">Cobrament (+)</option>
+            <option value="pagament">Pagament (−)</option>
+          </select>
+        </div>
+        <div class="fg"><label>Data</label><input type="date" id="p-data"></div>
+      </div>
+      <div class="fg"><label>Import</label><input type="number" step="0.01" id="p-import"></div>
+      <div class="fg"><label>Notes</label><textarea id="p-notes" rows="2"></textarea></div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-secondary" id="p-btn-del" style="display:none;margin-right:auto;background:var(--red-bg);color:var(--red-txt)" onclick="delPrevisio()">🗑 Eliminar</button>
+      <button class="btn btn-secondary" onclick="closePrevisioModal()">Cancel·lar</button>
+      <button class="btn btn-primary" onclick="savePrevisio()">Desar</button>
+    </div>
+  </div>
+</div>
+
 <script src="js/neon-client.js"></script>
 <script>
 const MESOS = ['Gen','Feb','Mar','Abr','Mai','Jun','Jul','Ago','Set','Oct','Nov','Des'];
-let emeses=[], rebudes=[], nomines=[], quotes=[];
+let emeses=[], rebudes=[], nomines=[], quotes=[], previsions=[], ajornaments=[];
 
 if(requireAuth()) load();
 
@@ -129,16 +184,19 @@ function toast(msg,type='inf'){
 async function load(){
   try{
     let rebudesRaw;
-    [emeses, rebudesRaw, nomines, quotes] = await Promise.all([
+    [emeses, rebudesRaw, nomines, quotes, previsions, ajornaments] = await Promise.all([
       sbGet('factures_emeses','select=*'),
       sbGet('factures_rebudes','select=*'),
       sbGet('nomines','select=*'),
-      sbGet('prestec_quotes','select=*')
+      sbGet('prestec_quotes','select=*'),
+      sbGet('previsions_tresoreria','select=*&order=data.asc'),
+      sbGet('iva_ajornaments','select=*')
     ]);
     // Les factures anul·lades no compten en cap report (igual que a la resta del Dashboard).
     emeses = emeses.filter(r=>r.estat!=='anullada');
     rebudes = rebudesRaw.filter(r=>r.estat!=='anullada');
     fillAnys();
+    populateEtiquetesDatalist();
     renderAll();
   }catch(e){ toast('Error carregant: '+e.message,'err'); }
 }
@@ -172,6 +230,77 @@ function monthlySums(rows, dateField, valueFn, year){
 const sum = arr => arr.reduce((a,b)=>a+b,0);
 const addArr = (a,b) => a.map((v,i)=>v+b[i]);
 const subArr = (a,b) => a.map((v,i)=>v-b[i]);
+
+// IVA es merita per data de factura (no per cobrament/pagament). Cada trimestre
+// es liquida i es paga el mes següent al seu tancament. No es compensen saldos
+// negatius entre trimestres (simplificació, indicada a la nota de la taula).
+function quarterIva(rows, y, q){
+  const first = q*3, last = first+2;
+  return sum(rows.filter(r=>{
+    if(!r.data) return false;
+    const ry = Number(r.data.slice(0,4)), rm = Number(r.data.slice(5,7))-1;
+    return ry===y && rm>=first && rm<=last;
+  }).map(r=>Number(r.iva_import)||0));
+}
+function isAjornat(any_liquidacio, trimestre){
+  return ajornaments.some(a=>a.any_liquidacio===any_liquidacio && a.trimestre===trimestre && a.ajornat);
+}
+
+// Retorna el detall dels 4 trimestres que es paguen dins l'any seleccionat
+// (T4 de l'any anterior + T1/T2/T3 de l'any en curs; el T4 de l'any en curs
+// es paga el gener següent i sortirà en seleccionar aquell any).
+function quartersDeLAny(year){
+  const y = Number(year);
+  const defs = [
+    { qy:y-1, qi:3, label:'T4 '+(y-1), payMonth:0 },
+    { qy:y,   qi:0, label:'T1 '+y,     payMonth:3 },
+    { qy:y,   qi:1, label:'T2 '+y,     payMonth:6 },
+    { qy:y,   qi:2, label:'T3 '+y,     payMonth:9 },
+  ];
+  return defs.map(d=>{
+    const repercutit = quarterIva(emeses, d.qy, d.qi);
+    const suportat = quarterIva(rebudes, d.qy, d.qi);
+    const liquidacio = Math.max(0, repercutit - suportat);
+    return { ...d, repercutit, suportat, liquidacio, ajornat: isAjornat(d.qy, d.qi) };
+  });
+}
+
+function calcLiquidacioIva(year){
+  const vals = Array(12).fill(0);
+  quartersDeLAny(year).forEach(q=>{
+    if(!q.ajornat) vals[q.payMonth] += q.liquidacio;
+  });
+  return vals;
+}
+
+async function toggleAjornament(any_liquidacio, trimestre, ajornat){
+  try{
+    if(ajornat){
+      await sbPost('iva_ajornaments', { any_liquidacio, trimestre, ajornat:true });
+    } else {
+      await sbDelWhereCompound('iva_ajornaments', { any_liquidacio, trimestre });
+    }
+    ajornaments = await sbGet('iva_ajornaments','select=*');
+    renderAll();
+  }catch(e){ toast('Error desant ajornament: '+e.message,'err'); }
+}
+
+function groupPrevisions(year){
+  const forYear = previsions.filter(p=>p.data && p.data.startsWith(String(year)));
+  const groups = {};
+  forYear.forEach(p=>{
+    const key = p.tipus+'|'+p.etiqueta.trim();
+    if(!groups[key]) groups[key] = { etiqueta:p.etiqueta.trim(), tipus:p.tipus, valors:Array(12).fill(0) };
+    const m = Number(p.data.slice(5,7))-1;
+    groups[key].valors[m] += Number(p.import)||0;
+  });
+  return Object.values(groups);
+}
+
+function populateEtiquetesDatalist(){
+  const etiquetes = [...new Set(previsions.map(p=>p.etiqueta.trim()).filter(Boolean))].sort();
+  document.getElementById('etiquetes-existents').innerHTML = etiquetes.map(e=>`<option value="${e}">`).join('');
+}
 
 function renderAll(){
   const year = document.getElementById('f-any').value;
@@ -226,12 +355,23 @@ function renderTresoreria(year){
   const pagFactures = monthlySums(rebudes.filter(r=>r.pagat),'data_pagament', r=>Number(r.total), year);
   const pagNomines = monthlySums(nomines.filter(r=>r.pagat),'data_pagament', r=>Number(r.import_net), year);
   const pagQuotes = monthlySums(quotes.filter(r=>r.pagat),'data_pagament', r=>Number(r.import_total), year);
-  const totalPagaments = addArr(addArr(pagFactures,pagNomines),pagQuotes);
-  const saldoMes = subArr(cobraments, totalPagaments);
+  const ivaTrimestral = calcLiquidacioIva(year);
+
+  const prevGroups = groupPrevisions(year);
+  const prevCobrament = prevGroups.filter(g=>g.tipus==='cobrament');
+  const prevPagament = prevGroups.filter(g=>g.tipus==='pagament');
+
+  const totalCobraments = prevCobrament.reduce((acc,g)=>addArr(acc,g.valors), cobraments);
+  const totalPagaments = prevPagament.reduce((acc,g)=>addArr(acc,g.valors),
+    addArr(addArr(addArr(pagFactures,pagNomines),pagQuotes), ivaTrimestral));
+  const saldoMes = subArr(totalCobraments, totalPagaments);
   const saldoAcum = [];
   saldoMes.reduce((acc,v,i)=>{ const t=acc+v; saldoAcum[i]=t; return t; },0);
 
   const head = '<th></th>'+MESOS.map(m=>`<th>${m}</th>`).join('')+'<th>Total</th>';
+  const prevRowsCobrament = prevCobrament.map(g=>rowHTML('(+) '+g.etiqueta, g.valors)).join('');
+  const prevRowsPagament = prevPagament.map(g=>rowHTML('(-) '+g.etiqueta, g.valors.map(v=>-v))).join('');
+
   document.getElementById('tab-tresoreria').innerHTML = `
     <div class="card">
       <div class="card-hdr"><h3>Moviments de tresoreria ${year} (criteri de caixa)</h3></div>
@@ -240,16 +380,77 @@ function renderTresoreria(year){
         <thead><tr>${head}</tr></thead>
         <tbody>
           ${rowHTML('Cobraments (factures emeses)', cobraments)}
+          ${prevRowsCobrament}
           <tr class="section"><td>Pagaments</td>${MESOS.map(()=>'<td></td>').join('')}<td></td></tr>
           ${rowHTML('Factures rebudes', pagFactures.map(v=>-v))}
           ${rowHTML('Nòmines', pagNomines.map(v=>-v))}
           ${rowHTML('Quotes de préstecs', pagQuotes.map(v=>-v))}
+          ${rowHTML('Liquidació IVA trimestral', ivaTrimestral.map(v=>-v))}
+          ${prevRowsPagament}
           ${rowHTML('Saldo del mes', saldoMes, {cls:'total'})}
           ${rowHTML('Saldo acumulat', saldoAcum, {cls:'result'})}
         </tbody>
       </table>
       </div>
-      <p class="muted-note">El saldo acumulat és relatiu als moviments registrats aquest any (no inclou el saldo bancari inicial).</p>
+      <p class="muted-note">El saldo acumulat és relatiu als moviments registrats aquest any (no inclou el saldo bancari inicial). La liquidació d'IVA no compensa saldos negatius entre trimestres. Les línies de previsió són manuals — quan la factura/cobrament real es registri, recorda ajustar o eliminar la previsió corresponent.</p>
+    </div>
+
+    ${renderIvaQuarters(year)}
+    ${renderPrevisionsPanel(year)}
+  `;
+}
+
+function renderIvaQuarters(year){
+  const qs = quartersDeLAny(year);
+  const rows = qs.map(q=>`
+    <tr>
+      <td>${q.label}</td>
+      <td class="num">${fmtMoney2(q.repercutit)}</td>
+      <td class="num">${fmtMoney2(q.suportat)}</td>
+      <td class="num"><strong>${fmtMoney2(q.liquidacio)}</strong></td>
+      <td>${MESOS[q.payMonth]}</td>
+      <td>
+        ${q.ajornat
+          ? `<button class="btn btn-secondary" onclick="toggleAjornament(${q.qy},${q.qi},false)">✕ Treure ajornament</button>`
+          : `<button class="btn btn-secondary" onclick="toggleAjornament(${q.qy},${q.qi},true)">📆 Marcar ajornat</button>`}
+      </td>
+    </tr>`).join('');
+  return `
+    <div class="card">
+      <div class="card-hdr"><h3>Liquidació d'IVA per trimestre</h3></div>
+      <div style="overflow-x:auto">
+      <table class="prev-tbl">
+        <thead><tr><th>Trimestre</th><th class="num">Repercutit</th><th class="num">Suportat</th><th class="num">Liquidació</th><th>Mes pagament</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      </div>
+      <p class="muted-note">Si un trimestre es marca com a ajornat, el seu import deixa d'incloure's a la fila automàtica "Liquidació IVA trimestral" — reparteix-lo manualment amb línies de previsió (p.ex. "Hisenda IVA ajornat") als mesos que us hagi concedit Hisenda.</p>
+    </div>`;
+}
+
+function renderPrevisionsPanel(year){
+  const forYear = previsions.filter(p=>p.data && p.data.startsWith(String(year))).sort((a,b)=>a.data<b.data?-1:1);
+  const rows = forYear.map(p=>`
+    <tr>
+      <td>${p.etiqueta}</td>
+      <td>${p.tipus==='cobrament'?'Cobrament':'Pagament'}</td>
+      <td>${new Date(p.data+'T00:00:00').toLocaleDateString('ca-ES')}</td>
+      <td class="num">${fmtMoney2(p.import)}</td>
+      <td>${p.notes||''}</td>
+      <td class="row-act">
+        <button class="icon-btn" onclick="openPrevisioModal(${p.id})" title="Editar">✏️</button>
+      </td>
+    </tr>`).join('');
+  return `
+    <div class="card">
+      <div class="card-hdr"><h3>Previsions manuals ${year}</h3><button class="btn btn-primary" onclick="openPrevisioModal()">+ Nova previsió</button></div>
+      <div style="overflow-x:auto">
+      <table class="prev-tbl">
+        <thead><tr><th>Etiqueta</th><th>Tipus</th><th>Data</th><th class="num">Import</th><th>Notes</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      </div>
+      ${!forYear.length ? '<div class="empty">Cap previsió per a '+year+'.</div>' : ''}
     </div>`;
 }
 
@@ -293,6 +494,53 @@ function renderPuntMort(year){
       </div>
       <p class="muted-note">Costos fixos = compres/serveis marcats com a "fix" + personal (brut+SS empresa) + interessos de préstecs. Costos variables = compres/serveis marcats com a "variable".</p>
     </div>`;
+}
+
+function openPrevisioModal(id){
+  const p = id ? previsions.find(x=>x.id===id) : null;
+  document.getElementById('prev-modal-title').textContent = p ? 'Editar previsió' : 'Nova previsió';
+  document.getElementById('p-id').value = p ? p.id : '';
+  document.getElementById('p-etiqueta').value = p ? p.etiqueta : '';
+  document.getElementById('p-tipus').value = p ? p.tipus : 'cobrament';
+  document.getElementById('p-data').value = p ? p.data : todayStr();
+  document.getElementById('p-import').value = p ? p.import : '';
+  document.getElementById('p-notes').value = p ? (p.notes||'') : '';
+  document.getElementById('p-btn-del').style.display = p ? 'inline-flex' : 'none';
+  document.getElementById('prev-modal-bg').classList.add('show');
+}
+function closePrevisioModal(){ document.getElementById('prev-modal-bg').classList.remove('show'); }
+
+async function savePrevisio(){
+  const id = document.getElementById('p-id').value;
+  const data = {
+    etiqueta: document.getElementById('p-etiqueta').value.trim(),
+    tipus: document.getElementById('p-tipus').value,
+    data: document.getElementById('p-data').value,
+    import: Number(document.getElementById('p-import').value)||0,
+    notes: document.getElementById('p-notes').value.trim() || null
+  };
+  if(!data.etiqueta || !data.data){ toast('Etiqueta i data són obligatòries','err'); return; }
+  try{
+    if(id){ await sbPatch('previsions_tresoreria', id, data); toast('Previsió actualitzada','ok'); }
+    else { await sbPost('previsions_tresoreria', data); toast('Previsió creada','ok'); }
+    closePrevisioModal();
+    previsions = await sbGet('previsions_tresoreria','select=*&order=data.asc');
+    populateEtiquetesDatalist();
+    renderAll();
+  }catch(e){ toast('Error desant: '+e.message,'err'); }
+}
+
+async function delPrevisio(){
+  const id = document.getElementById('p-id').value;
+  if(!id || !confirm('Segur que vols eliminar aquesta previsió?')) return;
+  try{
+    await sbDel('previsions_tresoreria', id);
+    toast('Previsió eliminada','ok');
+    closePrevisioModal();
+    previsions = await sbGet('previsions_tresoreria','select=*&order=data.asc');
+    populateEtiquetesDatalist();
+    renderAll();
+  }catch(e){ toast('Error eliminant: '+e.message,'err'); }
 }
 </script>
 </body>

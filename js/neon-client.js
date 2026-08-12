@@ -113,6 +113,14 @@ async function sbDel(t,id){
   const r = await fetch(`${NEON_DATA_API_URL}/${t}?id=eq.${id}`, { method:'DELETE', headers:getHDR() });
   if(!r.ok) throw new Error(await r.text());
 }
+// Esborra per un conjunt de columnes (útil per a taules sense id, com les de clau composta).
+async function sbDelWhereCompound(t, filters){
+  const s = await ensureSession();
+  if(!s){ location.replace('login.html'); throw new Error('Sessió caducada'); }
+  const q = Object.entries(filters).map(([k,v])=>`${k}=eq.${encodeURIComponent(v)}`).join('&');
+  const r = await fetch(`${NEON_DATA_API_URL}/${t}?${q}`, { method:'DELETE', headers:getHDR() });
+  if(!r.ok) throw new Error(await r.text());
+}
 
 // PIN per protegir l'anul·lació de factures. Canvia'l per un de propi.
 const CANCEL_PIN = '1234';
