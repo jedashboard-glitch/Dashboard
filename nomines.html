@@ -126,7 +126,7 @@ tbody tr:hover{background:var(--blue-light)}
       <table>
         <thead><tr>
           <th>Data</th><th>Empleat</th>
-          <th class="num">Brut</th><th class="num">SS empresa</th><th class="num">IRPF</th><th class="num">Net</th>
+          <th class="num">Brut</th><th class="num">SS Trab</th><th class="num">SS empresa</th><th class="num">IRPF</th><th class="num">Net</th>
           <th>Estat</th><th>Pagament</th><th></th>
         </tr></thead>
         <tbody id="tbody"></tbody>
@@ -147,8 +147,9 @@ tbody tr:hover{background:var(--blue-light)}
         <div class="fg"><label>Data</label><input type="date" id="m-data"></div>
         <div class="fg"><label>Empleat</label><input type="text" id="m-empleat"></div>
       </div>
+      <div class="fg"><label>Import brut</label><input type="number" step="0.01" id="m-brut" oninput="calcNet()"></div>
       <div class="fg-row">
-        <div class="fg"><label>Import brut</label><input type="number" step="0.01" id="m-brut" oninput="calcNet()"></div>
+        <div class="fg"><label>SS Trab</label><input type="number" step="0.01" id="m-ss-trab" oninput="calcNet()"></div>
         <div class="fg"><label>SS empresa</label><input type="number" step="0.01" id="m-ss" oninput="calcNet()"></div>
       </div>
       <div class="fg-row">
@@ -224,6 +225,7 @@ function render(){
       <td>${fmtDate(r.data)}</td>
       <td>${r.empleat||''}</td>
       <td class="num">${fmtMoney(r.import_brut)}</td>
+      <td class="num">${fmtMoney(r.ss_trab)}</td>
       <td class="num">${fmtMoney(r.ss_empresa)}</td>
       <td class="num">${fmtMoney(r.irpf)}</td>
       <td class="num"><strong>${fmtMoney(r.import_net)}</strong></td>
@@ -237,8 +239,9 @@ function render(){
 
 function calcNet(){
   const brut = Number(document.getElementById('m-brut').value)||0;
+  const ssTrab = Number(document.getElementById('m-ss-trab').value)||0;
   const irpf = Number(document.getElementById('m-irpf').value)||0;
-  document.getElementById('m-net').value = fmtMoney(brut-irpf);
+  document.getElementById('m-net').value = fmtMoney(brut-ssTrab-irpf);
 }
 
 function toggleDataPagament(){
@@ -255,6 +258,7 @@ function openModal(id){
   document.getElementById('m-data').value = r ? r.data : todayStr();
   document.getElementById('m-empleat').value = r ? (r.empleat||'') : '';
   document.getElementById('m-brut').value = r ? r.import_brut : '';
+  document.getElementById('m-ss-trab').value = r ? (r.ss_trab||0) : '';
   document.getElementById('m-ss').value = r ? r.ss_empresa : '';
   document.getElementById('m-irpf').value = r ? r.irpf : '';
   document.getElementById('m-pagat').checked = r ? r.pagat : false;
@@ -269,13 +273,14 @@ function closeModal(){ document.getElementById('modal-bg').classList.remove('sho
 async function saveNomina(){
   const id = document.getElementById('m-id').value;
   const import_brut = Number(document.getElementById('m-brut').value)||0;
+  const ss_trab = Number(document.getElementById('m-ss-trab').value)||0;
   const ss_empresa = Number(document.getElementById('m-ss').value)||0;
   const irpf = Number(document.getElementById('m-irpf').value)||0;
   const data = {
     data: document.getElementById('m-data').value,
     empleat: document.getElementById('m-empleat').value.trim(),
-    import_brut, ss_empresa, irpf,
-    import_net: Math.round((import_brut-irpf)*100)/100,
+    import_brut, ss_trab, ss_empresa, irpf,
+    import_net: Math.round((import_brut-ss_trab-irpf)*100)/100,
     pagat: document.getElementById('m-pagat').checked,
     data_pagament: document.getElementById('m-data-pagament').value || null,
     notes: document.getElementById('m-notes').value.trim() || null

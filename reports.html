@@ -170,7 +170,7 @@ tbody tr.section td:first-child{font-weight:700;color:var(--muted);padding-top:1
 <script src="js/neon-client.js"></script>
 <script>
 const MESOS = ['Gen','Feb','Mar','Abr','Mai','Jun','Jul','Ago','Set','Oct','Nov','Des'];
-let emeses=[], rebudes=[], nomines=[], quotes=[], previsions=[], ajornaments=[];
+let emeses=[], rebudes=[], nomines=[], quotes=[], previsions=[], ajornaments=[], ssAjornaments=[];
 
 if(requireAuth()) load();
 
@@ -184,13 +184,14 @@ function toast(msg,type='inf'){
 async function load(){
   try{
     let rebudesRaw;
-    [emeses, rebudesRaw, nomines, quotes, previsions, ajornaments] = await Promise.all([
+    [emeses, rebudesRaw, nomines, quotes, previsions, ajornaments, ssAjornaments] = await Promise.all([
       sbGet('factures_emeses','select=*'),
       sbGet('factures_rebudes','select=*'),
       sbGet('nomines','select=*'),
       sbGet('prestec_quotes','select=*'),
       sbGet('previsions_tresoreria','select=*&order=data.asc'),
-      sbGet('iva_ajornaments','select=*')
+      sbGet('iva_ajornaments','select=*'),
+      sbGet('ss_ajornaments','select=*')
     ]);
     // Les factures anul·lades no compten en cap report (igual que a la resta del Dashboard).
     emeses = emeses.filter(r=>r.estat!=='anullada');
@@ -231,16 +232,16 @@ const sum = arr => arr.reduce((a,b)=>a+b,0);
 const addArr = (a,b) => a.map((v,i)=>v+b[i]);
 const subArr = (a,b) => a.map((v,i)=>v-b[i]);
 
-// IVA es merita per data de factura (no per cobrament/pagament). Cada trimestre
-// es liquida i es paga el mes següent al seu tancament. No es compensen saldos
-// negatius entre trimestres (simplificació, indicada a la nota de la taula).
-function quarterIva(rows, y, q){
+// Meritació per data de factura/nòmina (no per cobrament/pagament/data_pagament).
+// Suma valueFn(r) de les files de "rows" la data de les quals cau al trimestre q
+// (0-3) de l'any y.
+function quarterSum(rows, y, q, valueFn){
   const first = q*3, last = first+2;
   return sum(rows.filter(r=>{
     if(!r.data) return false;
     const ry = Number(r.data.slice(0,4)), rm = Number(r.data.slice(5,7))-1;
     return ry===y && rm>=first && rm<=last;
-  }).map(r=>Number(r.iva_import)||0));
+  }).map(valueFn));
 }
 function isAjornat(any_liquidacio, trimestre){
   return ajornaments.some(a=>a.any_liquidacio===any_liquidacio && a.trimestre===trimestre && a.ajornat);
@@ -258,8 +259,8 @@ function quartersDeLAny(year){
     { qy:y,   qi:2, label:'T3 '+y,     payMonth:9 },
   ];
   return defs.map(d=>{
-    const repercutit = quarterIva(emeses, d.qy, d.qi);
-    const suportat = quarterIva(rebudes, d.qy, d.qi);
+    const repercutit = quarterSum(emeses, d.qy, d.qi, r=>Number(r.iva_import)||0);
+    const suportat = quarterSum(rebudes, d.qy, d.qi, r=>Number(r.iva_import)||0);
     const liquidacio = Math.max(0, repercutit - suportat);
     return { ...d, repercutit, suportat, liquidacio, ajornat: isAjornat(d.qy, d.qi) };
   });
@@ -281,6 +282,64 @@ async function toggleAjornament(any_liquidacio, trimestre, ajornat){
       await sbDelWhereCompound('iva_ajornaments', { any_liquidacio, trimestre });
     }
     ajornaments = await sbGet('iva_ajornaments','select=*');
+    renderAll();
+  }catch(e){ toast('Error desant ajornament: '+e.message,'err'); }
+}
+
+// Hisenda IRPF/111 (retenció de les nòmines): trimestral, mateixa mecànica que
+// l'IVA (es paga el mes següent al tancament del trimestre), sense ajornament.
+function calcIrpf111(year){
+  const y = Number(year);
+  const defs = [
+    { qy:y-1, qi:3, payMonth:0 },
+    { qy:y,   qi:0, payMonth:3 },
+    { qy:y,   qi:1, payMonth:6 },
+    { qy:y,   qi:2, payMonth:9 },
+  ];
+  const vals = Array(12).fill(0);
+  defs.forEach(d=>{ vals[d.payMonth] += quarterSum(nomines, d.qy, d.qi, r=>Number(r.irpf)||0); });
+  return vals;
+}
+
+function isSSAjornat(any_liquidacio, mes){
+  return ssAjornaments.some(a=>a.any_liquidacio===any_liquidacio && a.mes===mes && a.ajornat);
+}
+
+// Retorna, per a l'any seleccionat, els mesos amb nòmines la SS dels quals es
+// paga dins l'any (desembre de l'any anterior + gener-novembre de l'any en
+// curs; la SS de desembre es paga el gener següent i sortirà en seleccionar
+// aquell any). Només es mostren mesos amb import.
+function monthsForSS(year){
+  const y = Number(year);
+  const defs = [{ ay:y-1, am:11, payY:y, payM:0 }];
+  for(let m=0; m<11; m++) defs.push({ ay:y, am:m, payY:y, payM:m+1 });
+  return defs.map(d=>{
+    const key = String(d.ay)+'-'+String(d.am+1).padStart(2,'0');
+    const rowsMes = nomines.filter(r=>r.data && r.data.startsWith(key));
+    const ssTrab = sum(rowsMes.map(r=>Number(r.ss_trab)||0));
+    const ssEmpresa = sum(rowsMes.map(r=>Number(r.ss_empresa)||0));
+    return { ay:d.ay, am:d.am, payMonth:d.payM, label: MESOS[d.am]+' '+d.ay, ssTrab, ssEmpresa, ajornat: isSSAjornat(d.ay, d.am) };
+  }).filter(d=>d.ssTrab || d.ssEmpresa);
+}
+
+function calcSS(year){
+  const ssTrab = Array(12).fill(0);
+  const ssEmpresa = Array(12).fill(0);
+  monthsForSS(year).forEach(m=>{
+    ssTrab[m.payMonth] += m.ssTrab;
+    if(!m.ajornat) ssEmpresa[m.payMonth] += m.ssEmpresa;
+  });
+  return { ssTrab, ssEmpresa };
+}
+
+async function toggleSSAjornament(any_liquidacio, mes, ajornat){
+  try{
+    if(ajornat){
+      await sbPost('ss_ajornaments', { any_liquidacio, mes, ajornat:true });
+    } else {
+      await sbDelWhereCompound('ss_ajornaments', { any_liquidacio, mes });
+    }
+    ssAjornaments = await sbGet('ss_ajornaments','select=*');
     renderAll();
   }catch(e){ toast('Error desant ajornament: '+e.message,'err'); }
 }
@@ -356,6 +415,8 @@ function renderTresoreria(year){
   const pagNomines = monthlySums(nomines.filter(r=>r.pagat),'data_pagament', r=>Number(r.import_net), year);
   const pagQuotes = monthlySums(quotes.filter(r=>r.pagat),'data_pagament', r=>Number(r.import_total), year);
   const ivaTrimestral = calcLiquidacioIva(year);
+  const irpf111 = calcIrpf111(year);
+  const { ssTrab, ssEmpresa } = calcSS(year);
 
   const prevGroups = groupPrevisions(year);
   const prevCobrament = prevGroups.filter(g=>g.tipus==='cobrament');
@@ -363,12 +424,13 @@ function renderTresoreria(year){
 
   const totalCobraments = prevCobrament.reduce((acc,g)=>addArr(acc,g.valors), cobraments);
   const totalPagaments = prevPagament.reduce((acc,g)=>addArr(acc,g.valors),
-    addArr(addArr(addArr(pagFactures,pagNomines),pagQuotes), ivaTrimestral));
+    [pagFactures,ivaTrimestral,irpf111,pagNomines,ssTrab,ssEmpresa,pagQuotes].reduce(addArr));
   const saldoMes = subArr(totalCobraments, totalPagaments);
   const saldoAcum = [];
   saldoMes.reduce((acc,v,i)=>{ const t=acc+v; saldoAcum[i]=t; return t; },0);
 
   const head = '<th></th>'+MESOS.map(m=>`<th>${m}</th>`).join('')+'<th>Total</th>';
+  const blankRow = MESOS.map(()=>'<td></td>').join('');
   const prevRowsCobrament = prevCobrament.map(g=>rowHTML('(+) '+g.etiqueta, g.valors)).join('');
   const prevRowsPagament = prevPagament.map(g=>rowHTML('(-) '+g.etiqueta, g.valors.map(v=>-v))).join('');
 
@@ -381,23 +443,57 @@ function renderTresoreria(year){
         <tbody>
           ${rowHTML('Cobraments (factures emeses)', cobraments)}
           ${prevRowsCobrament}
-          <tr class="section"><td>Pagaments</td>${MESOS.map(()=>'<td></td>').join('')}<td></td></tr>
-          ${rowHTML('Factures rebudes', pagFactures.map(v=>-v))}
-          ${rowHTML('Nòmines', pagNomines.map(v=>-v))}
-          ${rowHTML('Quotes de préstecs', pagQuotes.map(v=>-v))}
+          <tr class="section"><td>Pagaments</td>${blankRow}<td></td></tr>
+          ${rowHTML('Proveïdors / creditors', pagFactures.map(v=>-v))}
+          <tr class="section"><td>Hisenda</td>${blankRow}<td></td></tr>
           ${rowHTML('Liquidació IVA trimestral', ivaTrimestral.map(v=>-v))}
+          ${rowHTML('Hisenda IRPF/111 (sous)', irpf111.map(v=>-v))}
+          <tr class="section"><td>Personal</td>${blankRow}<td></td></tr>
+          ${rowHTML('Salari net', pagNomines.map(v=>-v))}
+          ${rowHTML('SS Trab', ssTrab.map(v=>-v))}
+          ${rowHTML('SS Empresa', ssEmpresa.map(v=>-v))}
+          <tr class="section"><td>Finançament</td>${blankRow}<td></td></tr>
+          ${rowHTML('Quotes de préstecs', pagQuotes.map(v=>-v))}
           ${prevRowsPagament}
           ${rowHTML('Saldo del mes', saldoMes, {cls:'total'})}
           ${rowHTML('Saldo acumulat', saldoAcum, {cls:'result'})}
         </tbody>
       </table>
       </div>
-      <p class="muted-note">El saldo acumulat és relatiu als moviments registrats aquest any (no inclou el saldo bancari inicial). La liquidació d'IVA no compensa saldos negatius entre trimestres. Les línies de previsió són manuals — quan la factura/cobrament real es registri, recorda ajustar o eliminar la previsió corresponent.</p>
+      <p class="muted-note">El saldo acumulat és relatiu als moviments registrats aquest any (no inclou el saldo bancari inicial). La liquidació d'IVA i l'IRPF/111 no compensen saldos negatius entre períodes. Les línies de previsió són manuals — quan la factura/cobrament real es registri, recorda ajustar o eliminar la previsió corresponent.</p>
     </div>
 
     ${renderIvaQuarters(year)}
+    ${renderSSMonths(year)}
     ${renderPrevisionsPanel(year)}
   `;
+}
+
+function renderSSMonths(year){
+  const ms = monthsForSS(year);
+  const rows = ms.map(m=>`
+    <tr>
+      <td>${m.label}</td>
+      <td class="num">${fmtMoney2(m.ssTrab)}</td>
+      <td class="num">${fmtMoney2(m.ssEmpresa)}</td>
+      <td>${MESOS[m.payMonth]}</td>
+      <td>
+        ${m.ajornat
+          ? `<button class="btn btn-secondary" onclick="toggleSSAjornament(${m.ay},${m.am},false)">✕ Treure ajornament</button>`
+          : `<button class="btn btn-secondary" onclick="toggleSSAjornament(${m.ay},${m.am},true)">📆 Marcar ajornat</button>`}
+      </td>
+    </tr>`).join('');
+  return `
+    <div class="card">
+      <div class="card-hdr"><h3>SS Trab / SS Empresa per mes</h3></div>
+      <div style="overflow-x:auto">
+      <table class="prev-tbl">
+        <thead><tr><th>Mes nòmina</th><th class="num">SS Trab</th><th class="num">SS Empresa</th><th>Mes pagament</th><th></th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="5" class="empty">Cap nòmina amb SS registrada.</td></tr>'}</tbody>
+      </table>
+      </div>
+      <p class="muted-note">"Marcar ajornat" només afecta la SS Empresa d'aquell mes (la SS Trab mai s'ajorna) — treu-la de la fila automàtica perquè la reparteixis amb previsions manuals.</p>
+    </div>`;
 }
 
 function renderIvaQuarters(year){
