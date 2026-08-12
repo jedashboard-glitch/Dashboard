@@ -295,7 +295,7 @@ function render(){
       <td class="row-act">
         <button class="icon-btn" onclick="openModal(${r.id})" title="Editar">✏️</button>
         <button class="icon-btn" onclick="duplicarFactura(${r.id})" title="Duplicar">⧉</button>
-        <button class="icon-btn" onclick="anulaFactura(${r.id})" title="Anul·lar" ${isVoid?'disabled':''}>🚫</button>
+        <button class="icon-btn" onclick="cancelarFactura(${r.id})" title="Cancel·lar (elimina)" ${isVoid?'disabled':''}>🚫</button>
       </td>
     </tr>`;
   }).join('');
@@ -448,17 +448,16 @@ async function delFactura(){
   }catch(e){ toast('Error eliminant: '+e.message,'err'); }
 }
 
-async function anulaFactura(id){
+async function cancelarFactura(id){
   const r = rows.find(x=>x.id===id);
   if(!r || r.estat==='anullada') return;
   if(!checkPin()){ toast('PIN incorrecte','err'); return; }
-  if(!confirm('Segur que vols anul·lar aquesta factura? Quedarà exclosa dels totals.')) return;
-  const motiu = prompt('Motiu de l\'anul·lació (opcional):') || null;
+  if(!confirm('Segur que vols cancel·lar aquesta factura? S\'eliminarà del tot i no es pot desfer.')) return;
   try{
-    await sbPatch('factures_emeses', id, { estat:'anullada', data_anullacio: todayStr(), motiu_anullacio: motiu });
-    toast('Factura anul·lada','ok');
+    await sbDel('factures_emeses', id);
+    toast('Factura cancel·lada','ok');
     await load();
-  }catch(e){ toast('Error anul·lant: '+e.message,'err'); }
+  }catch(e){ toast('Error cancel·lant: '+e.message,'err'); }
 }
 </script>
 </body>
