@@ -126,7 +126,7 @@ tbody tr:hover{background:var(--blue-light)}
     <div class="card">
       <table>
         <thead><tr>
-          <th>Nom</th><th>NIF</th><th>Contacte</th>
+          <th>Codi</th><th>Nom</th><th>NIF</th><th>Contacte</th>
           <th class="num">IVA %</th><th class="num">IRPF %</th>
           <th class="num">Pagat</th><th class="num">Pendent</th>
           <th>Estat</th><th></th>
@@ -145,7 +145,10 @@ tbody tr:hover{background:var(--blue-light)}
     <div class="modal-hdr"><h3 id="modal-title">Nou proveïdor</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
       <input type="hidden" id="m-id">
-      <div class="fg"><label>Nom</label><input type="text" id="m-nom"></div>
+      <div class="fg-row">
+        <div class="fg"><label>Codi</label><input type="text" id="m-codi" placeholder="p.ex. 4100008"></div>
+        <div class="fg"><label>Nom</label><input type="text" id="m-nom"></div>
+      </div>
       <div class="fg-row">
         <div class="fg"><label>NIF</label><input type="text" id="m-nif"></div>
         <div class="fg"><label>Telèfon</label><input type="text" id="m-telefon"></div>
@@ -229,6 +232,7 @@ function render(){
   tbody.innerHTML = filtered.map(r=>{
     const s = statsFor(r.id);
     return `<tr>
+      <td>${r.codi||'—'}</td>
       <td><strong>${r.nom||''}</strong></td>
       <td>${r.nif||'—'}</td>
       <td style="font-size:12px">${[r.telefon,r.email].filter(Boolean).join(' · ')||'—'}</td>
@@ -264,6 +268,7 @@ function openModal(id){
   const r = id ? rows.find(x=>x.id===id) : null;
   document.getElementById('modal-title').textContent = r ? 'Editar proveïdor' : 'Nou proveïdor';
   document.getElementById('m-id').value = r ? r.id : '';
+  document.getElementById('m-codi').value = r ? (r.codi||'') : '';
   document.getElementById('m-nom').value = r ? (r.nom||'') : '';
   document.getElementById('m-nif').value = r ? (r.nif||'') : '';
   document.getElementById('m-telefon').value = r ? (r.telefon||'') : '';
@@ -286,6 +291,7 @@ function veureFactures(){
 async function saveProveidor(){
   const id = document.getElementById('m-id').value;
   const data = {
+    codi: document.getElementById('m-codi').value.trim() || null,
     nom: document.getElementById('m-nom').value.trim(),
     nif: document.getElementById('m-nif').value.trim() || null,
     telefon: document.getElementById('m-telefon').value.trim() || null,

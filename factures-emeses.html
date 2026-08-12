@@ -219,7 +219,7 @@ async function load(){
   try{
     [rows, clients] = await Promise.all([
       sbGet('factures_emeses','select=*&order=data.desc'),
-      sbGet('clients','select=id,nom,iva_pct,irpf_pct,actiu&order=nom.asc')
+      sbGet('clients','select=id,codi,nom,iva_pct,irpf_pct,actiu&order=nom.asc')
     ]);
     fillAnys();
     populateClientSelect();
@@ -305,7 +305,7 @@ function populateClientSelect(selectedId){
   const sel = document.getElementById('m-client-id');
   const activeClients = clients.filter(c=>c.actiu!==false);
   sel.innerHTML = '<option value="">— Selecciona client —</option>'
-    + activeClients.map(c=>`<option value="${c.id}">${c.nom}</option>`).join('')
+    + activeClients.map(c=>`<option value="${c.id}">${c.codi?c.codi+' — ':''}${c.nom}</option>`).join('')
     + '<option value="__new__">+ Crear nou client...</option>';
   if(selectedId) sel.value = String(selectedId);
 }
