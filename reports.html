@@ -423,17 +423,18 @@ function renderPL(year){
         <tbody>
           ${rowHTML('Ingressos', ingressos)}
           <tr class="section"><td>Costos variables</td>${MESOS.map(()=>'<td></td>').join('')}<td></td></tr>
-          ${rowHTML('Compres i serveis variables', costVar.map(v=>-v))}
+          ${rowHTML('Compres i serveis variables', costVar)}
           ${rowHTML('Marge de contribució', margeContrib, {cls:'total'})}
           <tr class="section"><td>Costos fixos</td>${MESOS.map(()=>'<td></td>').join('')}<td></td></tr>
-          ${rowHTML('Compres i serveis fixos', costFix.map(v=>-v))}
-          ${rowHTML('Personal (brut + SS empresa)', personal.map(v=>-v))}
-          ${rowHTML('Despeses financeres (interessos)', financeres.map(v=>-v))}
+          ${rowHTML('Compres i serveis fixos', costFix)}
+          ${rowHTML('Personal (brut + SS empresa)', personal)}
+          ${rowHTML('Despeses financeres (interessos)', financeres)}
+          ${rowHTML('Total despeses', totalDespeses, {cls:'total'})}
           ${rowHTML('Resultat (EBIT)', resultat, {cls:'result'})}
         </tbody>
       </table>
       </div>
-      <p class="muted-note">Els imports es basen en la base imposable (sense IVA) i la data de la factura/nòmina/quota, no en la data de cobrament o pagament.</p>
+      <p class="muted-note">Els imports es basen en la base imposable (sense IVA) i la data de la factura/nòmina/quota, no en la data de cobrament o pagament. Totes les despeses es mostren en positiu; "Marge de contribució" i "Resultat (EBIT)" ja en fan la resta.</p>
     </div>`;
 }
 
