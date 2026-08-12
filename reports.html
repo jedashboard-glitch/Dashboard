@@ -481,7 +481,7 @@ function renderTresoreriaTable(year, mode){
   const head = '<th></th>'+MESOS.map(m=>`<th>${m}</th>`).join('')+'<th>Total</th>';
   const blankRow = MESOS.map(()=>'<td></td>').join('');
   const prevRowsCobrament = prevCobrament.map(g=>rowHTML('(+) '+g.etiqueta, g.valors)).join('');
-  const prevRowsPagament = prevPagament.map(g=>rowHTML('(-) '+g.etiqueta, g.valors.map(v=>-v))).join('');
+  const prevRowsPagament = prevPagament.map(g=>rowHTML('(-) '+g.etiqueta, g.valors)).join('');
 
   const nota = real
     ? 'Vista Real: només compta moviments confirmats (cobrat/pagat) amb la seva data real. La liquidació d\'IVA, l\'IRPF/111 i la SS es mostren igualment perquè són pagaments obligatoris sense marca de "pagat" pròpia.'
@@ -497,24 +497,26 @@ function renderTresoreriaTable(year, mode){
           ${rowHTML('Saldo inicial', saldoInicialRow, {cls:'total'})}
           ${rowHTML('Cobraments (factures emeses)', cobraments)}
           ${prevRowsCobrament}
+          ${rowHTML('Total cobraments', totalCobraments, {cls:'total'})}
           <tr class="section"><td>Pagaments</td>${blankRow}<td></td></tr>
-          ${rowHTML('Proveïdors / creditors', pagFactures.map(v=>-v))}
+          ${rowHTML('Proveïdors / creditors', pagFactures)}
           <tr class="section"><td>Hisenda</td>${blankRow}<td></td></tr>
-          ${rowHTML('Liquidació IVA trimestral', ivaTrimestral.map(v=>-v))}
-          ${rowHTML('Hisenda IRPF/111 (sous)', irpf111.map(v=>-v))}
+          ${rowHTML('Liquidació IVA trimestral', ivaTrimestral)}
+          ${rowHTML('Hisenda IRPF/111 (sous)', irpf111)}
           <tr class="section"><td>Personal</td>${blankRow}<td></td></tr>
-          ${rowHTML('Salari net', pagNomines.map(v=>-v))}
-          ${rowHTML('SS Trab', ssTrab.map(v=>-v))}
-          ${rowHTML('SS Empresa', ssEmpresa.map(v=>-v))}
+          ${rowHTML('Salari net', pagNomines)}
+          ${rowHTML('SS Trab', ssTrab)}
+          ${rowHTML('SS Empresa', ssEmpresa)}
           <tr class="section"><td>Finançament</td>${blankRow}<td></td></tr>
-          ${rowHTML('Quotes de préstecs', pagQuotes.map(v=>-v))}
+          ${rowHTML('Quotes de préstecs', pagQuotes)}
           ${prevRowsPagament}
+          ${rowHTML('Total pagaments', totalPagaments, {cls:'total'})}
           ${rowHTML('Saldo del mes', saldoMes, {cls:'total'})}
           ${rowHTML('Saldo final', saldoFinalRow, {cls:'result'})}
         </tbody>
       </table>
       </div>
-      <p class="muted-note">${nota} El Saldo inicial de gener és editable ("✏️ Saldo inicial" de dalt) i correspon al saldo bancari real a 1 de gener de ${year}; els mesos següents l'arrosseguen sols des del Saldo final anterior. La liquidació d'IVA i l'IRPF/111 no compensen saldos negatius entre períodes.</p>
+      <p class="muted-note">${nota} Tots els imports de cobraments i pagaments es mostren en positiu (com un pressupost bancari); només "Saldo del mes" i "Saldo final" resten pagaments de cobraments. El Saldo inicial de gener és editable ("✏️ Saldo inicial" de dalt) i correspon al saldo bancari real a 1 de gener de ${year}; els mesos següents l'arrosseguen sols des del Saldo final anterior. La liquidació d'IVA i l'IRPF/111 no compensen saldos negatius entre períodes.</p>
     </div>`;
 }
 
