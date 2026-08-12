@@ -234,6 +234,7 @@ function render(){
       <td class="row-act">
         <button class="icon-btn" onclick="openQuotesModal(${p.id})" title="Veure quotes">📋</button>
         <button class="icon-btn" onclick="openModal(${p.id})" title="Editar">✏️</button>
+        <button class="icon-btn" onclick="duplicarPrestec(${p.id})" title="Duplicar">⧉</button>
       </td>
     </tr>`;
   }).join('');
@@ -257,6 +258,24 @@ function openModal(id){
   document.getElementById('modal-bg').classList.add('show');
 }
 function closeModal(){ document.getElementById('modal-bg').classList.remove('show'); }
+
+function duplicarPrestec(id){
+  const src = prestecsRows.find(x=>x.id===id);
+  if(!src) return;
+  document.getElementById('modal-title').textContent = 'Duplicar préstec';
+  document.getElementById('m-id').value = '';
+  document.getElementById('m-nom').value = src.nom||'';
+  document.getElementById('m-entitat').value = src.entitat||'';
+  document.getElementById('m-capital').value = src.capital_inicial;
+  document.getElementById('m-data-inici').value = todayStr();
+  document.getElementById('m-termini').value = src.termini_mesos||'';
+  document.getElementById('m-quota').value = src.quota_mensual;
+  document.getElementById('m-notes').value = src.notes||'';
+  document.getElementById('m-hint').textContent = 'Revisa el nom, la data d\'inici i l\'import abans de desar — es generaran quotes noves.';
+  document.getElementById('btn-del').style.display = 'none';
+  document.getElementById('modal-bg').classList.add('show');
+  setTimeout(()=>document.getElementById('m-nom').focus(),50);
+}
 
 async function savePrestec(){
   const id = document.getElementById('m-id').value;

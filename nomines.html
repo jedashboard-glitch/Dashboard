@@ -76,6 +76,7 @@ tbody tr:hover{background:var(--blue-light)}
 .toast{padding:11px 18px;border-radius:var(--r);font-size:13px;font-weight:600;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.25);animation:tin .3s ease}
 .toast.ok{background:var(--green)}.toast.err{background:var(--red)}.toast.inf{background:var(--blue)}
 @keyframes tin{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+.hint{font-size:12px;color:var(--muted)}
 ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.2);border-radius:3px}
 </style>
 </head>
@@ -162,6 +163,7 @@ tbody tr:hover{background:var(--blue-light)}
         <div class="fg"><label>Data pagament</label><input type="date" id="m-data-pagament"></div>
       </div>
       <div class="fg"><label>Notes</label><textarea id="m-notes" rows="2"></textarea></div>
+      <p class="hint" id="m-hint"></p>
     </div>
     <div class="modal-ftr">
       <button class="btn btn-secondary" id="btn-del" style="display:none;margin-right:auto;background:var(--red-bg);color:var(--red-txt)" onclick="delNomina()">🗑 Eliminar</button>
@@ -234,6 +236,7 @@ function render(){
       <td>${fmtDate(r.data_pagament)}</td>
       <td class="row-act">
         <button class="icon-btn" onclick="openModal(${r.id})" title="Editar">✏️</button>
+        <button class="icon-btn" onclick="duplicarNomina(${r.id})" title="Duplicar">⧉</button>
       </td>
     </tr>`).join('');
 }
@@ -266,10 +269,32 @@ function openModal(id){
   document.getElementById('m-data-pagament').value = r ? (r.data_pagament||'') : '';
   document.getElementById('m-notes').value = r ? (r.notes||'') : '';
   document.getElementById('btn-del').style.display = r ? 'inline-flex' : 'none';
+  document.getElementById('m-hint').textContent = '';
   calcNet();
   document.getElementById('modal-bg').classList.add('show');
 }
 function closeModal(){ document.getElementById('modal-bg').classList.remove('show'); }
+
+function duplicarNomina(id){
+  const src = rows.find(x=>x.id===id);
+  if(!src) return;
+  document.getElementById('modal-title').textContent = 'Duplicar nòmina';
+  document.getElementById('m-id').value = '';
+  document.getElementById('m-data').value = todayStr();
+  document.getElementById('m-empleat').value = src.empleat||'';
+  document.getElementById('m-brut').value = src.import_brut;
+  document.getElementById('m-ss-trab').value = src.ss_trab||0;
+  document.getElementById('m-ss').value = src.ss_empresa;
+  document.getElementById('m-irpf').value = src.irpf;
+  document.getElementById('m-pagat').checked = false;
+  document.getElementById('m-data-pagament').value = '';
+  document.getElementById('m-notes').value = src.notes||'';
+  document.getElementById('btn-del').style.display = 'none';
+  document.getElementById('m-hint').textContent = 'Revisa la data i l\'import abans de desar.';
+  calcNet();
+  document.getElementById('modal-bg').classList.add('show');
+  setTimeout(()=>document.getElementById('m-data').focus(),50);
+}
 
 async function saveNomina(){
   const id = document.getElementById('m-id').value;
