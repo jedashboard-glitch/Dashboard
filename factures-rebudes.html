@@ -42,6 +42,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
 .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
 .toolbar select,.toolbar input{padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit}
 .toolbar input[type=text]{flex:1;min-width:160px}
+.toolbar-label{font-size:12px;color:var(--muted);white-space:nowrap}
 .chip{display:none;align-items:center;gap:6px;background:var(--blue-light);color:var(--blue);padding:6px 10px;border-radius:20px;font-size:12px;font-weight:600}
 .chip.show{display:inline-flex}
 .chip button{background:none;border:none;color:var(--blue);cursor:pointer;font-weight:800;font-size:13px;padding:0;line-height:1}
@@ -133,6 +134,10 @@ tbody tr.void{opacity:.55}
     </div>
     <div class="toolbar">
       <select id="f-any" onchange="render()"></select>
+      <span class="toolbar-label">Des de</span>
+      <input type="date" id="f-desde" onchange="render()">
+      <span class="toolbar-label">Fins a</span>
+      <input type="date" id="f-finsa" onchange="render()">
       <select id="f-estat" onchange="render()">
         <option value="">Tots els estats</option>
         <option value="pagat">Pagades</option>
@@ -331,6 +336,8 @@ function fillAnys(){
 
 function render(){
   const any = document.getElementById('f-any').value;
+  const desde = document.getElementById('f-desde').value;
+  const finsa = document.getElementById('f-finsa').value;
   const estat = document.getElementById('f-estat').value;
   const tipus = document.getElementById('f-tipus').value;
   const cerca = document.getElementById('f-cerca').value.toLowerCase();
@@ -338,6 +345,8 @@ function render(){
   let filtered = rows.filter(r=>{
     if(urlProveidorId && r.proveidor_id!==urlProveidorId) return false;
     if(any && !r.data.startsWith(any)) return false;
+    if(desde && r.data<desde) return false;
+    if(finsa && r.data>finsa) return false;
     if(estat==='pagat' && (!r.pagat || r.estat==='anullada')) return false;
     if(estat==='pendent' && (r.pagat || r.estat==='anullada')) return false;
     if(estat==='anullada' && r.estat!=='anullada') return false;
