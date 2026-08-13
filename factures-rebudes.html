@@ -236,7 +236,7 @@ async function init(){
 async function load(){
   try{
     [rows, proveidors] = await Promise.all([
-      sbGet('factures_rebudes','select=*&order=data.desc'),
+      sbGet('factures_rebudes','select=*&order=data.desc,numero_serie.asc'),
       sbGet('proveidors','select=id,codi,nom,iva_pct,irpf_pct,tipus_cost_default,actiu&order=nom.asc')
     ]);
     fillAnys();
