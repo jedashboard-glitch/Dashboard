@@ -54,6 +54,7 @@ tbody td{padding:10px 14px;border-bottom:1px solid var(--border-light)}
 tbody tr:hover{background:var(--blue-light)}
 tbody tr.void{opacity:.55}
 .num{text-align:right;font-variant-numeric:tabular-nums}
+.pct{color:var(--muted);font-size:11px}
 .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
 .badge.ok{background:var(--green-bg);color:var(--green-txt)}
 .badge.pend{background:var(--amber-bg);color:var(--amber-txt)}
@@ -337,8 +338,8 @@ function render(){
       <td>${fmtDate(r.data)}</td>
       <td>${r.concepte||''}</td>
       <td class="num">${fmtMoney(r.base)}</td>
-      <td class="num">${fmtMoney(r.iva_import)}</td>
-      <td class="num">${fmtMoney(r.irpf_import)}</td>
+      <td class="num">${fmtMoney(r.iva_import)} <span class="pct">(${r.iva_pct}%)</span></td>
+      <td class="num">${fmtMoney(r.irpf_import)} <span class="pct">(${r.irpf_pct}%)</span></td>
       <td class="num"><strong>${fmtMoney(r.total)}</strong></td>
       <td>${estatBadge}</td>
       <td>${isVoid?fmtDate(r.data_anullacio):fmtDate(r.data_cobrament)}</td>
