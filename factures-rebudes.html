@@ -569,7 +569,7 @@ async function saveFactura(){
     data_pagament: document.getElementById('m-pagat').checked ? (document.getElementById('m-data-pagament').value || null) : null,
     notes: document.getElementById('m-notes').value.trim() || null
   };
-  if(!data.data || !data.concepte){ toast('Data i concepte són obligatoris','err'); return; }
+  if(!data.data){ toast('La data és obligatòria','err'); return; }
   try{
     if(id){ await sbPatch('factures_rebudes', id, data); toast('Factura actualitzada','ok'); }
     else { await sbPost('factures_rebudes', data); toast(duplicating?'Factura duplicada':'Factura creada','ok'); }
