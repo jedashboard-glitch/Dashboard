@@ -49,6 +49,10 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
 .tbl-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
 thead th{background:#f8f9fa;text-align:left;padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
+thead th.sortable{cursor:pointer;user-select:none}
+thead th.sortable:hover{color:var(--text)}
+thead th .sort-arrow{margin-left:3px;opacity:.4}
+thead th.sorted .sort-arrow{opacity:1;color:var(--blue)}
 tbody td{padding:10px 14px;border-bottom:1px solid var(--border-light)}
 tbody tr:hover{background:var(--blue-light)}
 tbody tr.void{opacity:.55}
@@ -144,11 +148,7 @@ tbody tr.void{opacity:.55}
     <div class="card">
       <div class="tbl-wrap">
       <table>
-        <thead><tr>
-          <th>Proveïdor</th><th>Núm.</th><th>Núm. sèrie</th><th>Data</th><th>Concepte</th>
-          <th class="num">Base</th><th class="num">IVA</th><th class="num">IRPF</th><th class="num">Total</th>
-          <th>Tipus</th><th>Estat</th><th>Pagament</th><th></th>
-        </tr></thead>
+        <thead><tr id="thead-row"></tr></thead>
         <tbody id="tbody"></tbody>
       </table>
       </div>
@@ -218,7 +218,62 @@ let proveidors = [];
 let urlProveidorId = null;
 let duplicating = false;
 let linkedNumeroSerie = null;
+let sortField = 'data';
+let sortDir = 'desc';
 if(requireAuth()) init();
+
+const SORT_COLS = [
+  {field:'proveidor', label:'Proveïdor'},
+  {field:'num_factura', label:'Núm.'},
+  {field:'numero_serie', label:'Núm. sèrie'},
+  {field:'data', label:'Data'},
+  {field:'concepte', label:'Concepte'},
+  {field:'base', label:'Base', num:true},
+  {field:'iva_import', label:'IVA', num:true},
+  {field:'irpf_import', label:'IRPF', num:true},
+  {field:'total', label:'Total', num:true},
+  {field:'tipus_cost', label:'Tipus'},
+  {field:'estat', label:'Estat'},
+  {field:'pagament', label:'Pagament'},
+];
+
+function renderThead(){
+  const tr = document.getElementById('thead-row');
+  tr.innerHTML = SORT_COLS.map(c=>{
+    const active = sortField===c.field;
+    const arrow = active ? (sortDir==='asc'?'▲':'▼') : '';
+    return `<th class="sortable${c.num?' num':''}${active?' sorted':''}" onclick="setSort('${c.field}')">${c.label}<span class="sort-arrow">${arrow}</span></th>`;
+  }).join('') + '<th></th>';
+}
+
+function setSort(field){
+  if(sortField===field){ sortDir = sortDir==='asc'?'desc':'asc'; }
+  else { sortField = field; sortDir = 'asc'; }
+  render();
+}
+
+function sortValue(r, field){
+  switch(field){
+    case 'base': case 'iva_import': case 'irpf_import': case 'total':
+      return Number(r[field])||0;
+    case 'numero_serie':
+      return r.numero_serie ? Number(r.numero_serie) : -1;
+    case 'estat':
+      return r.estat==='anullada' ? 2 : (r.pagat?1:0);
+    case 'pagament':
+      return (r.estat==='anullada' ? r.data_anullacio : r.data_pagament) || '';
+    default:
+      return (r[field]!=null ? String(r[field]) : '').toLowerCase();
+  }
+}
+
+function compareRows(a,b,field,dir){
+  const va = sortValue(a,field), vb = sortValue(b,field);
+  const cmp = (typeof va==='number' && typeof vb==='number')
+    ? va-vb
+    : String(va).localeCompare(String(vb),'ca',{numeric:true});
+  return dir==='asc'?cmp:-cmp;
+}
 
 function fmtMoney(n){ return (Number(n)||0).toLocaleString('ca-ES',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtDate(d){ if(!d) return '—'; return new Date(d+'T00:00:00').toLocaleDateString('ca-ES'); }
@@ -287,6 +342,8 @@ function render(){
     if(cerca && !((r.proveidor||'')+(r.concepte||'')+(r.num_factura||'')).toLowerCase().includes(cerca)) return false;
     return true;
   });
+  filtered.sort((a,b)=>compareRows(a,b,sortField,sortDir));
+  renderThead();
 
   const actives = filtered.filter(r=>r.estat!=='anullada');
   const total = actives.reduce((s,r)=>s+Number(r.total),0);
