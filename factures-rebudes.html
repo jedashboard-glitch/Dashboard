@@ -58,7 +58,6 @@ tbody td{padding:10px 14px;border-bottom:1px solid var(--border-light)}
 tbody tr:hover{background:var(--blue-light)}
 tbody tr.void{opacity:.55}
 .num{text-align:right;font-variant-numeric:tabular-nums}
-.pct{color:var(--muted);font-size:11px}
 .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
 .badge.ok{background:var(--green-bg);color:var(--green-txt)}
 .badge.pend{background:var(--amber-bg);color:var(--amber-txt)}
@@ -258,7 +257,9 @@ const SORT_COLS = [
   {field:'data', label:'Data'},
   {field:'concepte', label:'Concepte'},
   {field:'base', label:'Base', num:true},
+  {field:'iva_pct', label:'IVA %', num:true},
   {field:'iva_import', label:'IVA', num:true},
+  {field:'irpf_pct', label:'IRPF %', num:true},
   {field:'irpf_import', label:'IRPF', num:true},
   {field:'total', label:'Total', num:true},
   {field:'tipus_cost', label:'Tipus'},
@@ -283,7 +284,7 @@ function setSort(field){
 
 function sortValue(r, field){
   switch(field){
-    case 'base': case 'iva_import': case 'irpf_import': case 'total':
+    case 'base': case 'iva_pct': case 'iva_import': case 'irpf_pct': case 'irpf_import': case 'total':
       return Number(r[field])||0;
     case 'numero_serie':
       return r.numero_serie ? Number(r.numero_serie) : -1;
@@ -406,8 +407,10 @@ function render(){
       <td>${fmtDate(r.data)}</td>
       <td>${r.concepte||''}</td>
       <td class="num">${fmtMoney(r.base)}</td>
-      <td class="num">${fmtMoney(r.iva_import)} <span class="pct">(${r.iva_pct}%)</span></td>
-      <td class="num">${fmtMoney(r.irpf_import)} <span class="pct">(${r.irpf_pct}%)</span></td>
+      <td class="num">${r.iva_pct}%</td>
+      <td class="num">${fmtMoney(r.iva_import)}</td>
+      <td class="num">${r.irpf_pct}%</td>
+      <td class="num">${fmtMoney(r.irpf_import)}</td>
       <td class="num"><strong>${fmtMoney(r.total)}</strong></td>
       <td>${r.tipus_cost==='fix'?'<span class="badge fix">Fix</span>':'<span class="badge var">Variable</span>'}</td>
       <td>${estatBadge}</td>
@@ -689,7 +692,7 @@ function loadXLSX(){
 
 function exportRowValue(r, field){
   switch(field){
-    case 'base': case 'iva_import': case 'irpf_import': case 'total':
+    case 'base': case 'iva_pct': case 'iva_import': case 'irpf_pct': case 'irpf_import': case 'total':
       return Number(r[field])||0;
     case 'data':
       return fmtDate(r.data);
