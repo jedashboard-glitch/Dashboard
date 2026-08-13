@@ -87,11 +87,23 @@ tbody tr.void{opacity:.55}
 @keyframes tin{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
 .hint{font-size:12px;color:var(--muted)}
 ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.2);border-radius:3px}
+#print-header{display:none}
+@media print{
+  .no-print{display:none !important}
+  #print-header{display:block !important;margin-bottom:14px}
+  #print-header h2{font-size:18px;margin-bottom:4px}
+  #print-header p{font-size:12px;color:var(--muted)}
+  body{overflow:visible;height:auto;background:#fff}
+  #main{overflow:visible;height:auto}
+  #content{overflow:visible;padding:0}
+  .card{box-shadow:none}
+  .tbl-wrap{overflow:visible}
+}
 </style>
 </head>
 <body>
 <div id="app">
-<nav id="sidebar">
+<nav id="sidebar" class="no-print">
   <div id="logo-area" onclick="location.href='index.html'">
     <div class="logo-main">📊 Dashboard</div>
     <div class="logo-sub">Gestió financera</div>
@@ -112,7 +124,7 @@ tbody tr.void{opacity:.55}
   <div class="nav-footer">Dashboard v1.0</div>
 </nav>
 <main id="main">
-  <header id="topbar">
+  <header id="topbar" class="no-print">
     <h1>Factures emeses</h1>
     <span id="user-email" style="font-size:12px;color:var(--muted);margin-right:4px"></span>
     <button class="btn btn-secondary btn-sm" onclick="doLogout()">⏻ Sortir</button>
@@ -125,7 +137,7 @@ tbody tr.void{opacity:.55}
       <div class="kpi g"><div class="kpi-label">Cobrat</div><div class="kpi-val" id="kpi-cobrat">—</div></div>
       <div class="kpi a"><div class="kpi-label">Pendent</div><div class="kpi-val" id="kpi-pendent">—</div></div>
     </div>
-    <div class="toolbar">
+    <div class="toolbar no-print">
       <select id="f-any" onchange="render()"></select>
       <span class="toolbar-label">Des de</span>
       <input type="date" id="f-desde" onchange="render()">
@@ -139,7 +151,13 @@ tbody tr.void{opacity:.55}
       </select>
       <input type="text" id="f-cerca" placeholder="Cerca client o concepte..." oninput="render()">
       <span class="chip" id="client-chip"><span id="client-chip-nom"></span><button onclick="clearClientFilter()">✕</button></span>
+      <button class="btn btn-secondary" onclick="imprimirFiltrat()">🖨️ Imprimir</button>
+      <button class="btn btn-secondary" onclick="exportarExcel()">📊 Exportar</button>
       <button class="btn btn-primary" onclick="openModal()">+ Nova factura</button>
+    </div>
+    <div id="print-header">
+      <h2>Factures emeses</h2>
+      <p id="print-filtre"></p>
     </div>
     <div class="card">
       <div class="tbl-wrap">
@@ -147,7 +165,7 @@ tbody tr.void{opacity:.55}
         <thead><tr>
           <th>Client</th><th>Núm.</th><th>Data</th><th>Concepte</th>
           <th class="num">Base</th><th class="num">IVA</th><th class="num">IRPF</th><th class="num">Total</th>
-          <th>Estat</th><th>Cobrament</th><th></th>
+          <th>Estat</th><th>Cobrament</th><th class="no-print"></th>
         </tr></thead>
         <tbody id="tbody"></tbody>
       </table>
@@ -207,7 +225,22 @@ let rows = [];
 let clients = [];
 let urlClientId = null;
 let duplicating = false;
+let lastFiltered = [];
+let xlsxLoading = null;
 if(requireAuth()) init();
+
+const EXPORT_COLS = [
+  {field:'client', label:'Client'},
+  {field:'num_factura', label:'Núm.'},
+  {field:'data', label:'Data'},
+  {field:'concepte', label:'Concepte'},
+  {field:'base', label:'Base'},
+  {field:'iva_import', label:'IVA'},
+  {field:'irpf_import', label:'IRPF'},
+  {field:'total', label:'Total'},
+  {field:'estat', label:'Estat'},
+  {field:'cobrament', label:'Cobrament'},
+];
 
 function fmtMoney(n){ return (Number(n)||0).toLocaleString('ca-ES',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtDate(d){ if(!d) return '—'; return new Date(d+'T00:00:00').toLocaleDateString('ca-ES'); }
@@ -278,6 +311,8 @@ function render(){
     if(cerca && !((r.client||'')+(r.concepte||'')+(r.num_factura||'')).toLowerCase().includes(cerca)) return false;
     return true;
   });
+  lastFiltered = filtered;
+  document.getElementById('print-filtre').textContent = buildFilterSummary({any, desde, finsa, estat, cerca});
 
   const actives = filtered.filter(r=>r.estat!=='anullada');
   const base = actives.reduce((s,r)=>s+Number(r.base),0);
@@ -307,7 +342,7 @@ function render(){
       <td class="num"><strong>${fmtMoney(r.total)}</strong></td>
       <td>${estatBadge}</td>
       <td>${isVoid?fmtDate(r.data_anullacio):fmtDate(r.data_cobrament)}</td>
-      <td class="row-act">
+      <td class="row-act no-print">
         <button class="icon-btn" onclick="openModal(${r.id})" title="Editar">✏️</button>
         <button class="icon-btn" onclick="duplicarFactura(${r.id})" title="Duplicar">⧉</button>
         <button class="icon-btn" onclick="cancelarFactura(${r.id})" title="Cancel·lar (elimina)" ${isVoid?'disabled':''}>🚫</button>
@@ -473,6 +508,63 @@ async function cancelarFactura(id){
     toast('Factura cancel·lada','ok');
     await load();
   }catch(e){ toast('Error cancel·lant: '+e.message,'err'); }
+}
+
+function buildFilterSummary({any, desde, finsa, estat, cerca}){
+  const parts = [];
+  if(urlClientId){
+    const c = clients.find(x=>x.id===urlClientId);
+    parts.push('Client: '+(c?c.nom:('#'+urlClientId)));
+  }
+  if(any) parts.push('Any: '+any);
+  if(desde) parts.push('Des de: '+fmtDate(desde));
+  if(finsa) parts.push('Fins a: '+fmtDate(finsa));
+  if(estat) parts.push('Estat: '+document.getElementById('f-estat').selectedOptions[0].textContent);
+  if(cerca) parts.push('Cerca: "'+cerca+'"');
+  return (parts.length ? parts.join(' · ') : 'Totes les factures') + ' — generat el '+fmtDate(new Date().toISOString().slice(0,10));
+}
+
+function imprimirFiltrat(){
+  window.print();
+}
+
+function loadXLSX(){
+  if(window.XLSX) return Promise.resolve();
+  if(xlsxLoading) return xlsxLoading;
+  xlsxLoading = new Promise((resolve,reject)=>{
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = resolve;
+    s.onerror = ()=>{ xlsxLoading=null; reject(new Error('No s\'ha pogut carregar la llibreria Excel')); };
+    document.head.appendChild(s);
+  });
+  return xlsxLoading;
+}
+
+function exportRowValue(r, field){
+  switch(field){
+    case 'base': case 'iva_import': case 'irpf_import': case 'total':
+      return Number(r[field])||0;
+    case 'data':
+      return fmtDate(r.data);
+    case 'estat':
+      return r.estat==='anullada' ? 'Anul·lada' : (r.cobrat ? 'Cobrat' : 'Pendent');
+    case 'cobrament':
+      return fmtDate(r.estat==='anullada' ? r.data_anullacio : r.data_cobrament);
+    default:
+      return r[field] || '';
+  }
+}
+
+async function exportarExcel(){
+  try{
+    await loadXLSX();
+    const aoa = [EXPORT_COLS.map(c=>c.label), ...lastFiltered.map(r=>EXPORT_COLS.map(c=>exportRowValue(r,c.field)))];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Factures emeses');
+    XLSX.writeFile(wb, 'factures-emeses_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  }catch(e){ toast('Error exportant: '+e.message,'err'); }
 }
 </script>
 </body>

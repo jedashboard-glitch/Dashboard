@@ -93,11 +93,23 @@ tbody tr.void{opacity:.55}
 @keyframes tin{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
 .hint{font-size:12px;color:var(--muted)}
 ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.2);border-radius:3px}
+#print-header{display:none}
+@media print{
+  .no-print{display:none !important}
+  #print-header{display:block !important;margin-bottom:14px}
+  #print-header h2{font-size:18px;margin-bottom:4px}
+  #print-header p{font-size:12px;color:var(--muted)}
+  body{overflow:visible;height:auto;background:#fff}
+  #main{overflow:visible;height:auto}
+  #content{overflow:visible;padding:0}
+  .card{box-shadow:none}
+  .tbl-wrap{overflow:visible}
+}
 </style>
 </head>
 <body>
 <div id="app">
-<nav id="sidebar">
+<nav id="sidebar" class="no-print">
   <div id="logo-area" onclick="location.href='index.html'">
     <div class="logo-main">📊 Dashboard</div>
     <div class="logo-sub">Gestió financera</div>
@@ -118,7 +130,7 @@ tbody tr.void{opacity:.55}
   <div class="nav-footer">Dashboard v1.0</div>
 </nav>
 <main id="main">
-  <header id="topbar">
+  <header id="topbar" class="no-print">
     <h1>Factures rebudes</h1>
     <span id="user-email" style="font-size:12px;color:var(--muted);margin-right:4px"></span>
     <button class="btn btn-secondary btn-sm" onclick="doLogout()">⏻ Sortir</button>
@@ -132,7 +144,7 @@ tbody tr.void{opacity:.55}
       <div class="kpi g"><div class="kpi-label">Pagat</div><div class="kpi-val" id="kpi-pagat">—</div></div>
       <div class="kpi a"><div class="kpi-label">Pendent</div><div class="kpi-val" id="kpi-pendent">—</div></div>
     </div>
-    <div class="toolbar">
+    <div class="toolbar no-print">
       <select id="f-any" onchange="render()"></select>
       <span class="toolbar-label">Des de</span>
       <input type="date" id="f-desde" onchange="render()">
@@ -151,7 +163,13 @@ tbody tr.void{opacity:.55}
       </select>
       <input type="text" id="f-cerca" placeholder="Cerca proveïdor o concepte..." oninput="render()">
       <span class="chip" id="prov-chip"><span id="prov-chip-nom"></span><button onclick="clearProveidorFilter()">✕</button></span>
+      <button class="btn btn-secondary" onclick="imprimirFiltrat()">🖨️ Imprimir</button>
+      <button class="btn btn-secondary" onclick="exportarExcel()">📊 Exportar</button>
       <button class="btn btn-primary" onclick="openModal()">+ Nova factura</button>
+    </div>
+    <div id="print-header">
+      <h2>Factures rebudes</h2>
+      <p id="print-filtre"></p>
     </div>
     <div class="card">
       <div class="tbl-wrap">
@@ -228,6 +246,8 @@ let duplicating = false;
 let linkedNumeroSerie = null;
 let sortField = 'data';
 let sortDir = 'desc';
+let lastFiltered = [];
+let xlsxLoading = null;
 if(requireAuth()) init();
 
 const SORT_COLS = [
@@ -251,7 +271,7 @@ function renderThead(){
     const active = sortField===c.field;
     const arrow = active ? (sortDir==='asc'?'▲':'▼') : '';
     return `<th class="sortable${c.num?' num':''}${active?' sorted':''}" onclick="setSort('${c.field}')">${c.label}<span class="sort-arrow">${arrow}</span></th>`;
-  }).join('') + '<th></th>';
+  }).join('') + '<th class="no-print"></th>';
 }
 
 function setSort(field){
@@ -356,6 +376,8 @@ function render(){
   });
   filtered.sort((a,b)=>compareRows(a,b,sortField,sortDir));
   renderThead();
+  lastFiltered = filtered;
+  document.getElementById('print-filtre').textContent = buildFilterSummary({any, desde, finsa, estat, tipus, cerca});
 
   const actives = filtered.filter(r=>r.estat!=='anullada');
   const base = actives.reduce((s,r)=>s+Number(r.base),0);
@@ -389,7 +411,7 @@ function render(){
       <td>${r.tipus_cost==='fix'?'<span class="badge fix">Fix</span>':'<span class="badge var">Variable</span>'}</td>
       <td>${estatBadge}</td>
       <td>${isVoid?fmtDate(r.data_anullacio):fmtDate(r.data_pagament)}</td>
-      <td class="row-act">
+      <td class="row-act no-print">
         <button class="icon-btn" onclick="openModal(${r.id})" title="Editar">✏️</button>
         <button class="icon-btn" onclick="duplicarFactura(${r.id})" title="Duplicar">⧉</button>
         <button class="icon-btn" onclick="afegirLiniaIva(${r.id})" title="Afegir línia (mateixa factura, altre IVA)" ${isVoid?'disabled':''}>🔗</button>
@@ -630,6 +652,66 @@ async function renumerarPosteriors(cancelada){
     const novaSeq = (Number(x.numero_serie)%10000) - 1;
     await sbPatch('factures_rebudes', x.id, { numero_serie: String(m)+String(novaSeq).padStart(4,'0') });
   }
+}
+
+function buildFilterSummary({any, desde, finsa, estat, tipus, cerca}){
+  const parts = [];
+  if(urlProveidorId){
+    const p = proveidors.find(x=>x.id===urlProveidorId);
+    parts.push('Proveïdor: '+(p?p.nom:('#'+urlProveidorId)));
+  }
+  if(any) parts.push('Any: '+any);
+  if(desde) parts.push('Des de: '+fmtDate(desde));
+  if(finsa) parts.push('Fins a: '+fmtDate(finsa));
+  if(estat) parts.push('Estat: '+document.getElementById('f-estat').selectedOptions[0].textContent);
+  if(tipus) parts.push('Tipus: '+document.getElementById('f-tipus').selectedOptions[0].textContent);
+  if(cerca) parts.push('Cerca: "'+cerca+'"');
+  return (parts.length ? parts.join(' · ') : 'Totes les factures') + ' — generat el '+fmtDate(new Date().toISOString().slice(0,10));
+}
+
+function imprimirFiltrat(){
+  window.print();
+}
+
+function loadXLSX(){
+  if(window.XLSX) return Promise.resolve();
+  if(xlsxLoading) return xlsxLoading;
+  xlsxLoading = new Promise((resolve,reject)=>{
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = resolve;
+    s.onerror = ()=>{ xlsxLoading=null; reject(new Error('No s\'ha pogut carregar la llibreria Excel')); };
+    document.head.appendChild(s);
+  });
+  return xlsxLoading;
+}
+
+function exportRowValue(r, field){
+  switch(field){
+    case 'base': case 'iva_import': case 'irpf_import': case 'total':
+      return Number(r[field])||0;
+    case 'data':
+      return fmtDate(r.data);
+    case 'tipus_cost':
+      return r.tipus_cost==='fix' ? 'Fix' : 'Variable';
+    case 'estat':
+      return r.estat==='anullada' ? 'Anul·lada' : (r.pagat ? 'Pagat' : 'Pendent');
+    case 'pagament':
+      return fmtDate(r.estat==='anullada' ? r.data_anullacio : r.data_pagament);
+    default:
+      return r[field] || '';
+  }
+}
+
+async function exportarExcel(){
+  try{
+    await loadXLSX();
+    const aoa = [SORT_COLS.map(c=>c.label), ...lastFiltered.map(r=>SORT_COLS.map(c=>exportRowValue(r,c.field)))];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Factures rebudes');
+    XLSX.writeFile(wb, 'factures-rebudes_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  }catch(e){ toast('Error exportant: '+e.message,'err'); }
 }
 </script>
 </body>
