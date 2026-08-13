@@ -124,7 +124,10 @@ tbody tr.void{opacity:.55}
   </header>
   <div id="content">
     <div class="kpi-grid">
-      <div class="kpi"><div class="kpi-label">Total rebut</div><div class="kpi-val" id="kpi-total">—</div></div>
+      <div class="kpi"><div class="kpi-label">Total base</div><div class="kpi-val" id="kpi-base">—</div></div>
+      <div class="kpi"><div class="kpi-label">Total IVA</div><div class="kpi-val" id="kpi-iva">—</div></div>
+      <div class="kpi"><div class="kpi-label">Total IRPF</div><div class="kpi-val" id="kpi-irpf">—</div></div>
+      <div class="kpi"><div class="kpi-label">Total rebudes</div><div class="kpi-val" id="kpi-total">—</div></div>
       <div class="kpi g"><div class="kpi-label">Pagat</div><div class="kpi-val" id="kpi-pagat">—</div></div>
       <div class="kpi a"><div class="kpi-label">Pendent</div><div class="kpi-val" id="kpi-pendent">—</div></div>
     </div>
@@ -346,8 +349,14 @@ function render(){
   renderThead();
 
   const actives = filtered.filter(r=>r.estat!=='anullada');
+  const base = actives.reduce((s,r)=>s+Number(r.base),0);
+  const ivaTotal = actives.reduce((s,r)=>s+Number(r.iva_import),0);
+  const irpfTotal = actives.reduce((s,r)=>s+Number(r.irpf_import),0);
   const total = actives.reduce((s,r)=>s+Number(r.total),0);
   const pagat = actives.filter(r=>r.pagat).reduce((s,r)=>s+Number(r.total),0);
+  document.getElementById('kpi-base').textContent = fmtMoney(base);
+  document.getElementById('kpi-iva').textContent = fmtMoney(ivaTotal);
+  document.getElementById('kpi-irpf').textContent = fmtMoney(irpfTotal);
   document.getElementById('kpi-total').textContent = fmtMoney(total);
   document.getElementById('kpi-pagat').textContent = fmtMoney(pagat);
   document.getElementById('kpi-pendent').textContent = fmtMoney(total-pagat);
