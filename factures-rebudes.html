@@ -217,6 +217,7 @@ let rows = [];
 let proveidors = [];
 let urlProveidorId = null;
 let duplicating = false;
+let linkedNumeroSerie = null;
 if(requireAuth()) init();
 
 function fmtMoney(n){ return (Number(n)||0).toLocaleString('ca-ES',{minimumFractionDigits:2,maximumFractionDigits:2}); }
@@ -316,6 +317,7 @@ function render(){
       <td class="row-act">
         <button class="icon-btn" onclick="openModal(${r.id})" title="Editar">✏️</button>
         <button class="icon-btn" onclick="duplicarFactura(${r.id})" title="Duplicar">⧉</button>
+        <button class="icon-btn" onclick="afegirLiniaIva(${r.id})" title="Afegir línia (mateixa factura, altre IVA)" ${isVoid?'disabled':''}>🔗</button>
         <button class="icon-btn" onclick="cancelarFactura(${r.id})" title="Cancel·lar (elimina)" ${isVoid?'disabled':''}>🚫</button>
       </td>
     </tr>`;
@@ -378,6 +380,7 @@ function toggleDataPagament(){
 
 function openModal(id){
   duplicating = false;
+  linkedNumeroSerie = null;
   const r = id ? rows.find(x=>x.id===id) : null;
   document.getElementById('modal-title').textContent = r ? 'Editar factura' : 'Nova factura';
   document.getElementById('m-id').value = r ? r.id : '';
@@ -404,6 +407,7 @@ function duplicarFactura(id){
   const src = rows.find(x=>x.id===id);
   if(!src) return;
   duplicating = true;
+  linkedNumeroSerie = null;
   document.getElementById('modal-title').textContent = 'Duplicar factura';
   document.getElementById('m-id').value = '';
   document.getElementById('m-data').value = todayStr();
@@ -424,6 +428,36 @@ function duplicarFactura(id){
   calcTotal();
   document.getElementById('modal-bg').classList.add('show');
   setTimeout(()=>document.getElementById('m-num-factura').focus(),50);
+}
+
+// Afegeix una línia més d'una factura que ja té diversos tipus d'IVA (p.ex.
+// un tiquet de supermercat): comparteix número de sèrie i núm. de factura
+// amb la línia d'origen — legalment és el mateix document rebut.
+function afegirLiniaIva(id){
+  const src = rows.find(x=>x.id===id);
+  if(!src) return;
+  duplicating = true;
+  linkedNumeroSerie = src.numero_serie || null;
+  document.getElementById('modal-title').textContent = 'Afegir línia (mateixa factura, altre IVA)';
+  document.getElementById('m-id').value = '';
+  document.getElementById('m-data').value = src.data;
+  document.getElementById('m-data-termini').value = src.data_termini||src.data;
+  document.getElementById('m-num-factura').value = src.num_factura||'';
+  document.getElementById('m-numero-serie').value = src.numero_serie ? src.numero_serie+' (compartit amb l\'original)' : '(es generarà en desar)';
+  populateProveidorSelect(src.proveidor_id);
+  document.getElementById('m-concepte').value = src.concepte||'';
+  document.getElementById('m-base').value = '';
+  document.getElementById('m-iva-pct').value = 0;
+  document.getElementById('m-irpf-pct').value = src.irpf_pct||0;
+  document.getElementById('m-tipus-cost').value = src.tipus_cost||'variable';
+  document.getElementById('m-pagat').checked = src.pagat;
+  document.getElementById('m-data-pagament').value = src.pagat ? (src.data_pagament||'') : '';
+  document.getElementById('m-notes').value = src.notes||'';
+  document.getElementById('btn-del').style.display = 'none';
+  document.getElementById('m-hint').textContent = 'Comparteix número de sèrie i núm. de factura amb l\'original — posa aquí la base i l\'IVA d\'aquest tram.';
+  calcTotal();
+  document.getElementById('modal-bg').classList.add('show');
+  setTimeout(()=>document.getElementById('m-base').focus(),50);
 }
 
 function closeModal(){ document.getElementById('modal-bg').classList.remove('show'); }
@@ -455,7 +489,7 @@ async function saveFactura(){
     data: document.getElementById('m-data').value,
     data_termini: document.getElementById('m-data-termini').value || null,
     num_factura: document.getElementById('m-num-factura').value.trim() || null,
-    ...(id ? {} : { numero_serie: nextNumeroSerie(document.getElementById('m-data').value) }),
+    ...(id ? {} : { numero_serie: linkedNumeroSerie || nextNumeroSerie(document.getElementById('m-data').value) }),
     proveidor_id: proveidorId,
     proveidor: provObj ? provObj.nom : null,
     concepte: document.getElementById('m-concepte').value.trim(),
@@ -504,8 +538,13 @@ async function cancelarFactura(id){
 
 // Resta 1 al número de sèrie de totes les factures del mateix mes/any amb
 // número superior al de la factura cancel·lada, perquè la sèrie quedi sense forats.
+// Si encara queden línies germanes amb el mateix número (mateixa factura amb
+// diversos tipus d'IVA), no es renumera res: el "lloc" d'aquell document
+// encara està ocupat.
 async function renumerarPosteriors(cancelada){
   if(!cancelada.numero_serie || !cancelada.data) return;
+  const germanes = rows.filter(x=>x.id!==cancelada.id && x.numero_serie===cancelada.numero_serie);
+  if(germanes.length) return;
   const y = Number(cancelada.data.slice(0,4)), m = Number(cancelada.data.slice(5,7));
   const seqCancelada = Number(cancelada.numero_serie)%10000;
   const afectades = rows.filter(x=>x.id!==cancelada.id && x.numero_serie && x.data
