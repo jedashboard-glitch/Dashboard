@@ -50,7 +50,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
 .kpi-sub{font-size:11px;color:var(--muted)}
 .dash-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
 .card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow)}
-#list-cobrar,#list-pagar{max-height:420px;overflow-y:auto}
+#list-cobrar,#list-pagar,#list-pagar-proveidors,#list-pagar-nomines,#list-pagar-prestecs{max-height:420px;overflow-y:auto}
 .card-hdr{padding:14px 18px;border-bottom:1px solid var(--border-light);display:flex;align-items:center;gap:8px}
 .card-hdr h3{font-size:14px;font-weight:700;color:var(--text);flex:1}
 .card-hdr a{font-size:12px;color:var(--blue);text-decoration:none;font-weight:600}
@@ -154,6 +154,19 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
       </div>
     </div>
 
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-hdr"><h3 id="titol-pagar-proveidors">Pendent de pagar — Proveïdors</h3><span class="hdr-total" id="total-pagar-proveidors"></span><a href="factures-rebudes.html">Veure totes →</a></div>
+      <div id="list-pagar-proveidors"><div class="no-alerts">Carregant...</div></div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-hdr"><h3 id="titol-pagar-nomines">Pendent de pagar — Nòmines</h3><span class="hdr-total" id="total-pagar-nomines"></span><a href="nomines.html">Veure totes →</a></div>
+      <div id="list-pagar-nomines"><div class="no-alerts">Carregant...</div></div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-hdr"><h3 id="titol-pagar-prestecs">Pendent de pagar — Préstecs</h3><span class="hdr-total" id="total-pagar-prestecs"></span><a href="prestecs.html">Veure totes →</a></div>
+      <div id="list-pagar-prestecs"><div class="no-alerts">Carregant...</div></div>
+    </div>
+
   </div>
 </main>
 </div>
@@ -233,6 +246,31 @@ async function init(){
     renderList('list-pagar', pagarItems, f=>({
       nom: f.nom, sub: `${f.tipus} · ${fmtDate(f.data)}`, amt: fmtMoney(f.amt), dot:'dot-r'
     }));
+
+    // Pendent de pagar, desglossat per mòdul
+    const rebudesPendents = rebudes.filter(activa).filter(f=>!f.pagat).sort((a,b)=>a.data<b.data?-1:1);
+    const totalRebudesPendents = rebudesPendents.reduce((s,f)=>s+Number(f.total),0);
+    document.getElementById('titol-pagar-proveidors').textContent = `Pendent de pagar — Proveïdors (${rebudesPendents.length})`;
+    document.getElementById('total-pagar-proveidors').textContent = fmtMoney(totalRebudesPendents);
+    renderList('list-pagar-proveidors', rebudesPendents, f=>({
+      nom: f.proveidor || f.concepte, sub: fmtDate(f.data), amt: fmtMoney(f.total), dot:'dot-r'
+    }), 'factures-rebudes.html');
+
+    const nominesPendents = nomines.filter(f=>!f.pagat).sort((a,b)=>a.data<b.data?-1:1);
+    const totalNominesPendents = nominesPendents.reduce((s,f)=>s+Number(f.import_net),0);
+    document.getElementById('titol-pagar-nomines').textContent = `Pendent de pagar — Nòmines (${nominesPendents.length})`;
+    document.getElementById('total-pagar-nomines').textContent = fmtMoney(totalNominesPendents);
+    renderList('list-pagar-nomines', nominesPendents, f=>({
+      nom: f.empleat, sub: fmtDate(f.data), amt: fmtMoney(f.import_net), dot:'dot-r'
+    }), 'nomines.html');
+
+    const quotesPendents = quotes.filter(q=>!q.pagat).sort((a,b)=>a.data_prevista<b.data_prevista?-1:1);
+    const totalQuotesPendents = quotesPendents.reduce((s,q)=>s+Number(q.import_total),0);
+    document.getElementById('titol-pagar-prestecs').textContent = `Pendent de pagar — Préstecs (${quotesPendents.length})`;
+    document.getElementById('total-pagar-prestecs').textContent = fmtMoney(totalQuotesPendents);
+    renderList('list-pagar-prestecs', quotesPendents, q=>({
+      nom: 'Quota préstec', sub: fmtDate(q.data_prevista), amt: fmtMoney(q.import_total), dot:'dot-r'
+    }), 'prestecs.html');
 
   }catch(e){
     console.error(e);
