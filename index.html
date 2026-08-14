@@ -64,6 +64,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
 .alert-nom{font-weight:600}
 .alert-sub{font-size:11px;color:var(--muted);margin-top:1px}
 .alert-amt{font-weight:700;font-size:13px;text-align:right;white-space:nowrap}
+.hdr-total{font-weight:700;font-size:14px;color:var(--text);white-space:nowrap}
 .modules-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
 .mod-card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);padding:18px 16px;text-align:center;cursor:pointer;transition:all .15s;text-decoration:none;display:block;border-top:3px solid transparent}
 .mod-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.12);border-top-color:var(--blue)}
@@ -144,11 +145,11 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
 
     <div class="dash-row">
       <div class="card">
-        <div class="card-hdr"><h3 id="titol-cobrar">Pendent de cobrar</h3><a href="factures-emeses.html">Veure totes →</a></div>
+        <div class="card-hdr"><h3 id="titol-cobrar">Pendent de cobrar</h3><span class="hdr-total" id="total-cobrar"></span><a href="factures-emeses.html">Veure totes →</a></div>
         <div id="list-cobrar"><div class="no-alerts">Carregant...</div></div>
       </div>
       <div class="card">
-        <div class="card-hdr"><h3 id="titol-pagar">Pendent de pagar</h3></div>
+        <div class="card-hdr"><h3 id="titol-pagar">Pendent de pagar</h3><span class="hdr-total" id="total-pagar"></span></div>
         <div id="list-pagar"><div class="no-alerts">Carregant...</div></div>
       </div>
     </div>
@@ -216,6 +217,7 @@ async function init(){
     // Pendent de cobrar
     const cobrarItems = emeses.filter(activa).filter(f=>!f.cobrat).sort((a,b)=>a.data<b.data?-1:1);
     document.getElementById('titol-cobrar').textContent = `Pendent de cobrar (${cobrarItems.length})`;
+    document.getElementById('total-cobrar').textContent = fmtMoney(pendentCobrar);
     renderList('list-cobrar', cobrarItems, f=>({
       nom: f.client || f.concepte, sub: fmtDate(f.data), amt: fmtMoney(f.total), dot:'dot-g'
     }), 'factures-emeses.html');
@@ -227,6 +229,7 @@ async function init(){
       ...quotes.filter(q=>!q.pagat).map(q=>({data:q.data_prevista,nom:'Quota préstec',amt:q.import_total,tipus:'Préstec'}))
     ].sort((a,b)=>a.data<b.data?-1:1);
     document.getElementById('titol-pagar').textContent = `Pendent de pagar (${pagarItems.length})`;
+    document.getElementById('total-pagar').textContent = fmtMoney(pendentPagar);
     renderList('list-pagar', pagarItems, f=>({
       nom: f.nom, sub: `${f.tipus} · ${fmtDate(f.data)}`, amt: fmtMoney(f.amt), dot:'dot-r'
     }));
