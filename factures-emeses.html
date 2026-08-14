@@ -149,7 +149,7 @@ tbody tr.void{opacity:.55}
         <option value="pendent">Pendents</option>
         <option value="anullada">Anul·lades</option>
       </select>
-      <input type="text" id="f-cerca" placeholder="Cerca client o concepte..." oninput="render()">
+      <input type="text" id="f-cerca" placeholder="Cerca codi, client o concepte..." oninput="render()">
       <span class="chip" id="client-chip"><span id="client-chip-nom"></span><button onclick="clearClientFilter()">✕</button></span>
       <button class="btn btn-secondary" onclick="imprimirFiltrat()">🖨️ Imprimir</button>
       <button class="btn btn-secondary" onclick="exportarExcel()">📊 Exportar</button>
@@ -163,7 +163,7 @@ tbody tr.void{opacity:.55}
       <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>Client</th><th>Núm.</th><th>Data</th><th>Concepte</th>
+          <th>Codi</th><th>Client</th><th>Núm. fra.</th><th>Data</th><th>Concepte</th>
           <th class="num">Base</th><th class="num">IVA %</th><th class="num">IVA</th><th class="num">IRPF %</th><th class="num">IRPF</th><th class="num">Total</th>
           <th>Estat</th><th>Cobrament</th><th class="no-print"></th>
         </tr></thead>
@@ -230,8 +230,9 @@ let xlsxLoading = null;
 if(requireAuth()) init();
 
 const EXPORT_COLS = [
+  {field:'cli_codi', label:'Codi'},
   {field:'client', label:'Client'},
-  {field:'num_factura', label:'Núm.'},
+  {field:'num_factura', label:'Núm. fra.'},
   {field:'data', label:'Data'},
   {field:'concepte', label:'Concepte'},
   {field:'base', label:'Base'},
@@ -243,6 +244,8 @@ const EXPORT_COLS = [
   {field:'estat', label:'Estat'},
   {field:'cobrament', label:'Cobrament'},
 ];
+
+function cliCodi(r){ return (clients.find(c=>c.id===r.client_id)||{}).codi || ''; }
 
 function fmtMoney(n){ return (Number(n)||0).toLocaleString('ca-ES',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtDate(d){ if(!d) return '—'; return new Date(d+'T00:00:00').toLocaleDateString('ca-ES'); }
@@ -310,7 +313,7 @@ function render(){
     if(estat==='cobrat' && (!r.cobrat || r.estat==='anullada')) return false;
     if(estat==='pendent' && (r.cobrat || r.estat==='anullada')) return false;
     if(estat==='anullada' && r.estat!=='anullada') return false;
-    if(cerca && !((r.client||'')+(r.concepte||'')+(r.num_factura||'')).toLowerCase().includes(cerca)) return false;
+    if(cerca && !((r.client||'')+cliCodi(r)+(r.concepte||'')+(r.num_factura||'')).toLowerCase().includes(cerca)) return false;
     return true;
   });
   lastFiltered = filtered;
@@ -333,9 +336,9 @@ function render(){
     const isVoid = r.estat==='anullada';
     let estatBadge = isVoid ? '<span class="badge void">Anul·lada</span>'
       : (r.cobrat?'<span class="badge ok">Cobrat</span>':'<span class="badge pend">Pendent</span>');
-    const cliCodi = (clients.find(c=>c.id===r.client_id)||{}).codi;
     return `<tr class="${isVoid?'void':''}">
-      <td>${cliCodi?cliCodi+' — ':''}${r.client||''}</td>
+      <td>${cliCodi(r)||'—'}</td>
+      <td>${r.client||''}</td>
       <td>${r.num_factura||'—'}</td>
       <td>${fmtDate(r.data)}</td>
       <td>${r.concepte||''}</td>
@@ -552,10 +555,8 @@ function exportRowValue(r, field){
       return Number(r[field])||0;
     case 'data':
       return fmtDate(r.data);
-    case 'client':{
-      const c = clients.find(x=>x.id===r.client_id);
-      return (c && c.codi ? c.codi+' — ' : '') + (r.client||'');
-    }
+    case 'cli_codi':
+      return cliCodi(r);
     case 'estat':
       return r.estat==='anullada' ? 'Anul·lada' : (r.cobrat ? 'Cobrat' : 'Pendent');
     case 'cobrament':

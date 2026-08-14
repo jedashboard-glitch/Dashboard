@@ -161,7 +161,7 @@ tbody tr.void{opacity:.55}
         <option value="fix">Cost fix</option>
         <option value="variable">Cost variable</option>
       </select>
-      <input type="text" id="f-cerca" placeholder="Cerca proveïdor o concepte..." oninput="render()">
+      <input type="text" id="f-cerca" placeholder="Cerca codi, proveïdor, concepte o núm. sèrie..." oninput="render()">
       <span class="chip" id="prov-chip"><span id="prov-chip-nom"></span><button onclick="clearProveidorFilter()">✕</button></span>
       <button class="btn btn-secondary" onclick="imprimirFiltrat()">🖨️ Imprimir</button>
       <button class="btn btn-secondary" onclick="exportarExcel()">📊 Exportar</button>
@@ -251,8 +251,9 @@ let xlsxLoading = null;
 if(requireAuth()) init();
 
 const SORT_COLS = [
+  {field:'prov_codi', label:'Codi'},
   {field:'proveidor', label:'Proveïdor'},
-  {field:'num_factura', label:'Núm.'},
+  {field:'num_factura', label:'Núm. fra.'},
   {field:'numero_serie', label:'Núm. sèrie'},
   {field:'data', label:'Data'},
   {field:'concepte', label:'Concepte'},
@@ -282,10 +283,14 @@ function setSort(field){
   render();
 }
 
+function provCodi(r){ return (proveidors.find(p=>p.id===r.proveidor_id)||{}).codi || ''; }
+
 function sortValue(r, field){
   switch(field){
     case 'base': case 'iva_pct': case 'iva_import': case 'irpf_pct': case 'irpf_import': case 'total':
       return Number(r[field])||0;
+    case 'prov_codi':
+      return provCodi(r).toLowerCase();
     case 'numero_serie':
       return r.numero_serie ? Number(r.numero_serie) : -1;
     case 'estat':
@@ -373,7 +378,7 @@ function render(){
     if(estat==='pendent' && (r.pagat || r.estat==='anullada')) return false;
     if(estat==='anullada' && r.estat!=='anullada') return false;
     if(tipus && r.tipus_cost!==tipus) return false;
-    if(cerca && !((r.proveidor||'')+(r.concepte||'')+(r.num_factura||'')).toLowerCase().includes(cerca)) return false;
+    if(cerca && !((r.proveidor||'')+provCodi(r)+(r.concepte||'')+(r.num_factura||'')+(r.numero_serie||'')).toLowerCase().includes(cerca)) return false;
     return true;
   });
   filtered.sort((a,b)=>compareRows(a,b,sortField,sortDir));
@@ -400,9 +405,9 @@ function render(){
     const isVoid = r.estat==='anullada';
     let estatBadge = isVoid ? '<span class="badge void">Anul·lada</span>'
       : (r.pagat?'<span class="badge ok">Pagat</span>':'<span class="badge pend">Pendent</span>');
-    const provCodi = (proveidors.find(p=>p.id===r.proveidor_id)||{}).codi;
     return `<tr class="${isVoid?'void':''}">
-      <td>${provCodi?provCodi+' — ':''}${r.proveidor||''}</td>
+      <td>${provCodi(r)||'—'}</td>
+      <td>${r.proveidor||''}</td>
       <td>${r.num_factura||'—'}</td>
       <td>${r.numero_serie||'—'}</td>
       <td>${fmtDate(r.data)}</td>
@@ -697,10 +702,8 @@ function exportRowValue(r, field){
       return Number(r[field])||0;
     case 'data':
       return fmtDate(r.data);
-    case 'proveidor':{
-      const p = proveidors.find(x=>x.id===r.proveidor_id);
-      return (p && p.codi ? p.codi+' — ' : '') + (r.proveidor||'');
-    }
+    case 'prov_codi':
+      return provCodi(r);
     case 'tipus_cost':
       return r.tipus_cost==='fix' ? 'Fix' : 'Variable';
     case 'estat':
