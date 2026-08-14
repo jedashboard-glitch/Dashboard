@@ -400,8 +400,9 @@ function render(){
     const isVoid = r.estat==='anullada';
     let estatBadge = isVoid ? '<span class="badge void">Anul·lada</span>'
       : (r.pagat?'<span class="badge ok">Pagat</span>':'<span class="badge pend">Pendent</span>');
+    const provCodi = (proveidors.find(p=>p.id===r.proveidor_id)||{}).codi;
     return `<tr class="${isVoid?'void':''}">
-      <td>${r.proveidor||''}</td>
+      <td>${provCodi?provCodi+' — ':''}${r.proveidor||''}</td>
       <td>${r.num_factura||'—'}</td>
       <td>${r.numero_serie||'—'}</td>
       <td>${fmtDate(r.data)}</td>
@@ -696,6 +697,10 @@ function exportRowValue(r, field){
       return Number(r[field])||0;
     case 'data':
       return fmtDate(r.data);
+    case 'proveidor':{
+      const p = proveidors.find(x=>x.id===r.proveidor_id);
+      return (p && p.codi ? p.codi+' — ' : '') + (r.proveidor||'');
+    }
     case 'tipus_cost':
       return r.tipus_cost==='fix' ? 'Fix' : 'Variable';
     case 'estat':

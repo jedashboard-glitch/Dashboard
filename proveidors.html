@@ -304,6 +304,11 @@ async function saveProveidor(){
     actiu: document.getElementById('m-actiu').checked
   };
   if(!data.nom){ toast('El nom és obligatori','err'); return; }
+  if(!id && !data.codi){ toast('El codi és obligatori','err'); return; }
+  if(data.codi){
+    const dup = rows.find(p=>p.codi===data.codi && String(p.id)!==String(id));
+    if(dup){ toast('El codi '+data.codi+' ja existeix: '+dup.nom,'err'); return; }
+  }
   try{
     if(id){ await sbPatch('proveidors', id, data); toast('Proveïdor actualitzat','ok'); }
     else { await sbPost('proveidors', data); toast('Proveïdor creat','ok'); }

@@ -333,8 +333,9 @@ function render(){
     const isVoid = r.estat==='anullada';
     let estatBadge = isVoid ? '<span class="badge void">Anul·lada</span>'
       : (r.cobrat?'<span class="badge ok">Cobrat</span>':'<span class="badge pend">Pendent</span>');
+    const cliCodi = (clients.find(c=>c.id===r.client_id)||{}).codi;
     return `<tr class="${isVoid?'void':''}">
-      <td>${r.client||''}</td>
+      <td>${cliCodi?cliCodi+' — ':''}${r.client||''}</td>
       <td>${r.num_factura||'—'}</td>
       <td>${fmtDate(r.data)}</td>
       <td>${r.concepte||''}</td>
@@ -551,6 +552,10 @@ function exportRowValue(r, field){
       return Number(r[field])||0;
     case 'data':
       return fmtDate(r.data);
+    case 'client':{
+      const c = clients.find(x=>x.id===r.client_id);
+      return (c && c.codi ? c.codi+' — ' : '') + (r.client||'');
+    }
     case 'estat':
       return r.estat==='anullada' ? 'Anul·lada' : (r.cobrat ? 'Cobrat' : 'Pendent');
     case 'cobrament':

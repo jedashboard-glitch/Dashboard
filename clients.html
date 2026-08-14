@@ -294,6 +294,11 @@ async function saveClient(){
     actiu: document.getElementById('m-actiu').checked
   };
   if(!data.nom){ toast('El nom és obligatori','err'); return; }
+  if(!id && !data.codi){ toast('El codi és obligatori','err'); return; }
+  if(data.codi){
+    const dup = rows.find(c=>c.codi===data.codi && String(c.id)!==String(id));
+    if(dup){ toast('El codi '+data.codi+' ja existeix: '+dup.nom,'err'); return; }
+  }
   try{
     if(id){ await sbPatch('clients', id, data); toast('Client actualitzat','ok'); }
     else { await sbPost('clients', data); toast('Client creat','ok'); }
