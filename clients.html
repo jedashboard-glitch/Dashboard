@@ -71,6 +71,7 @@ tbody tr:hover{background:var(--blue-light)}
 .fg input,.fg select,.fg textarea{padding:9px 11px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit}
 .fg input[type=number],.fg input:disabled{text-align:right}
 .fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fg-row3{display:grid;grid-template-columns:100px 1fr 1fr;gap:12px}
 .fg-check{flex-direction:row;align-items:center;gap:8px}
 .modal-ftr{padding:16px 22px;border-top:1px solid var(--border-light);display:flex;justify-content:flex-end;gap:10px}
 #toast{position:fixed;bottom:22px;right:22px;z-index:999;display:flex;flex-direction:column;gap:8px}
@@ -156,6 +157,11 @@ tbody tr:hover{background:var(--blue-light)}
       <div class="fg-row">
         <div class="fg"><label>Email</label><input type="email" id="m-email"></div>
         <div class="fg"><label>Adreça</label><input type="text" id="m-adreca"></div>
+      </div>
+      <div class="fg-row3">
+        <div class="fg"><label>CP</label><input type="text" id="m-cp"></div>
+        <div class="fg"><label>Localitat</label><input type="text" id="m-localitat"></div>
+        <div class="fg"><label>Província</label><input type="text" id="m-provincia"></div>
       </div>
       <div class="fg-row">
         <div class="fg"><label>IVA % per defecte</label><input type="number" step="0.01" id="m-iva-pct" value="21"></div>
@@ -266,6 +272,9 @@ function openModal(id){
   document.getElementById('m-telefon').value = r ? (r.telefon||'') : '';
   document.getElementById('m-email').value = r ? (r.email||'') : '';
   document.getElementById('m-adreca').value = r ? (r.adreca||'') : '';
+  document.getElementById('m-cp').value = r ? (r.cp||'') : '';
+  document.getElementById('m-localitat').value = r ? (r.localitat||'') : '';
+  document.getElementById('m-provincia').value = r ? (r.provincia||'') : '';
   document.getElementById('m-iva-pct').value = r ? (r.iva_pct??21) : 21;
   document.getElementById('m-irpf-pct').value = r ? (r.irpf_pct??0) : 0;
   document.getElementById('m-notes').value = r ? (r.notes||'') : '';
@@ -288,6 +297,9 @@ async function saveClient(){
     telefon: document.getElementById('m-telefon').value.trim() || null,
     email: document.getElementById('m-email').value.trim() || null,
     adreca: document.getElementById('m-adreca').value.trim() || null,
+    cp: document.getElementById('m-cp').value.trim() || null,
+    localitat: document.getElementById('m-localitat').value.trim() || null,
+    provincia: document.getElementById('m-provincia').value.trim() || null,
     iva_pct: Number(document.getElementById('m-iva-pct').value)||0,
     irpf_pct: Number(document.getElementById('m-irpf-pct').value)||0,
     notes: document.getElementById('m-notes').value.trim() || null,
