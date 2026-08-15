@@ -1,0 +1,98 @@
+-- Migració 015: Càrrega inicial de nòmines des del CSV
+--
+-- Buida la taula nomines (reinicia els id des de l'1; confirmat per
+-- l'usuari que la fila de mostra ja s'havia eliminat) i la torna a
+-- carregar amb els 60 registres del CSV (gener-juliol 2026, 12 empleats).
+--
+-- Dates corregides: les files de gener/febrer/març portaven una barra
+-- doble i any incorrecte (p.ex. "31/3//2026", "28/2//2027", "31/1//2028")
+-- -- confirmat amb l'usuari que totes són del 2026 (31/1, 28/2, 31/3).
+--
+-- ss_trab i irpf: el CSV els porta amb signe negatiu en algunes files i
+-- positiu en unes altres, però la magnitud sempre és correcta; s'ha agafat
+-- el valor absolut (com fa servir sempre l'app). import_net recalculat
+-- amb la mateixa fórmula que fa servir l'app (brut - ss_trab - irpf) en
+-- lloc del valor del CSV, tot i que ja coincidien.
+--
+-- Noms unificats (el mateix empleat, mateix codi i DNI, escrit de dues
+-- maneres al CSV -- confirmat amb l'usuari quina és la correcta):
+--   codi 4: "GERALDINE CHERIGNY NICOLE" -> "CHERIGNY NICOLE GERALDINE"
+--   codi 9: "MARTI REVENTOS MARC" -> "MARTI RAVENTOS MARC"
+--
+-- data_pagament es deixa a NULL quan pagat=false (fila d'ESTRUCH SABATER
+-- ASTRID de juliol), encara que el CSV hi portava una data -- mateix
+-- criteri que fa servir l'app (toggleDataPagament).
+--
+-- La columna "id" del CSV s'ignora (Postgres assigna els seus propis
+-- ids); "codi" es la clau d'identificació de l'empleat.
+--
+-- Com sempre: després d'executar-ho, "Refresh schema cache" a Data API a
+-- la consola de Neon.
+
+BEGIN;
+
+TRUNCATE TABLE nomines RESTART IDENTITY;
+
+INSERT INTO nomines (codi, dni, data, empleat, import_brut, ss_trab, ss_empresa, irpf, import_net, pagat, data_pagament, notes) VALUES
+('1', '47942354G', '2026-01-31', 'ESTRUCH SABATER ASTRID', 1476, 95.94, 476.74, 62.29, 1317.77, true, '2026-01-31', NULL),
+('1', '47942354G', '2026-02-28', 'ESTRUCH SABATER ASTRID', 1476, 95.94, 476.74, 26.86, 1353.2, true, '2026-02-28', NULL),
+('1', '47942354G', '2026-03-31', 'ESTRUCH SABATER ASTRID', 2901.98, 188.62, 937.34, 550.51, 2162.85, true, '2026-03-31', NULL),
+('1', '47942354G', '2026-04-30', 'ESTRUCH SABATER ASTRID', 1476, 95.94, 476.74, 80.29, 1299.77, true, '2026-04-30', NULL),
+('1', '47942354G', '2026-05-31', 'ESTRUCH SABATER ASTRID', 1476, 95.94, 476.74, 80.29, 1299.77, true, '2026-05-31', NULL),
+('1', '47942354G', '2026-06-30', 'ESTRUCH SABATER ASTRID', 1550, 100.76, 500.65, 84.32, 1364.92, true, '2026-06-30', NULL),
+('1', '47942354G', '2026-07-31', 'ESTRUCH SABATER ASTRID', 1550, 100.76, 500.65, 123.38, 1325.86, false, NULL, NULL),
+('2', '45933981Z', '2026-01-31', 'MONROIG MARCIPAR JOEL', 948.44, 61.65, 306.35, 43.72, 843.07, true, '2026-01-31', NULL),
+('2', '45933981Z', '2026-02-28', 'MONROIG MARCIPAR JOEL', 1580.75, 102.75, 510.58, 74.77, 1403.23, true, '2026-02-28', NULL),
+('2', '45933981Z', '2026-03-31', 'MONROIG MARCIPAR JOEL', 1580.75, 102.75, 510.58, 76.67, 1401.33, true, '2026-03-31', NULL),
+('2', '45933981Z', '2026-04-30', 'MONROIG MARCIPAR JOEL', 1580.75, 102.75, 510.58, 78.88, 1399.12, true, '2026-04-30', NULL),
+('2', '45933981Z', '2026-05-31', 'MONROIG MARCIPAR JOEL', 1580.75, 102.75, 510.58, 78.88, 1399.12, true, '2026-05-31', NULL),
+('2', '45933981Z', '2026-06-30', 'MONROIG MARCIPAR JOEL', 1580.75, 102.75, 510.58, 78.88, 1399.12, true, '2026-06-30', NULL),
+('2', '45933981Z', '2026-07-31', 'MONROIG MARCIPAR JOEL', 1580.75, 102.75, 510.58, 104.33, 1373.67, true, '2026-07-31', NULL),
+('3', '76050369H', '2026-01-31', 'AVILA NIETO CAROLINA', 1716.67, 111.59, 554.49, 153.64, 1451.44, true, '2026-01-31', NULL),
+('3', '76050369H', '2026-02-28', 'AVILA NIETO CAROLINA', 1716.67, 111.59, 554.49, 155.19, 1449.89, true, '2026-02-28', NULL),
+('3', '76050369H', '2026-03-31', 'AVILA NIETO CAROLINA', 2552.82, 165.93, 824.57, 233.33, 2153.56, true, '2026-03-31', NULL),
+('3', '76050369H', '2026-04-30', 'AVILA NIETO CAROLINA', 2550.01, 165.76, 823.65, 449.06, 1935.19, true, '2026-04-30', NULL),
+('3', '76050369H', '2026-05-31', 'AVILA NIETO CAROLINA', 2550.01, 165.76, 823.65, 449.06, 1935.19, true, '2026-05-31', NULL),
+('3', '76050369H', '2026-06-30', 'AVILA NIETO CAROLINA', 1716.68, 111.59, 554.49, 302.31, 1302.78, true, '2026-06-30', NULL),
+('3', '76050369H', '2026-07-31', 'AVILA NIETO CAROLINA', 1716.68, 111.59, 554.49, 302.31, 1302.78, true, '2026-07-31', NULL),
+('4', 'X9905471S', '2026-01-31', 'CHERIGNY NICOLE GERALDINE', 1403.59, 91.24, 453.36, 34.53, 1277.82, true, '2026-01-31', NULL),
+('4', 'X9905471S', '2026-02-28', 'CHERIGNY NICOLE GERALDINE', 1403.59, 91.24, 453.36, 34.53, 1277.82, true, '2026-02-28', NULL),
+('4', 'X9905471S', '2026-03-31', 'CHERIGNY NICOLE GERALDINE', 1403.59, 91.24, 453.36, 34.53, 1277.82, true, '2026-03-31', NULL),
+('4', 'X9905471S', '2026-04-30', 'CHERIGNY NICOLE GERALDINE', 1403.59, 91.24, 453.36, 34.53, 1277.82, true, '2026-04-30', NULL),
+('4', 'X9905471S', '2026-05-31', 'CHERIGNY NICOLE GERALDINE', 1403.56, 85.96, 342.99, 34.53, 1283.07, true, '2026-05-31', NULL),
+('4', 'X9905471S', '2026-05-31', 'CHERIGNY NICOLE GERALDINE', 842.22, 54.73, 272.05, 20.72, 766.77, true, '2026-05-31', NULL),
+('5', '47633306F', '2026-04-30', 'PAPIOL SOLER LAIA', 855.61, 55.61, 276.37, 0, 800, true, '2026-04-30', NULL),
+('5', '47633306F', '2026-04-30', 'PAPIOL SOLER LAIA', 213.33, 13.87, 68.9, 0, 199.46, true, '2026-04-30', NULL),
+('5', '47633306F', '2026-01-31', 'PAPIOL SOLER LAIA', 855.61, 55.61, 276.37, 0, 800, true, '2026-01-31', NULL),
+('5', '47633306F', '2026-02-28', 'PAPIOL SOLER LAIA', 855.61, 55.61, 276.37, 0, 800, true, '2026-02-28', NULL),
+('5', '47633306F', '2026-03-31', 'PAPIOL SOLER LAIA', 855.61, 55.61, 276.37, 0, 800, true, '2026-03-31', NULL),
+('6', '41560741V', '2026-01-31', 'RISQUES BLASI MARIA', 1113.37, 72.37, 359.61, 0, 1041, true, '2026-01-31', NULL),
+('6', '41560741V', '2026-02-28', 'RISQUES BLASI MARIA', 1069.52, 69.52, 345.46, 0, 1000, true, '2026-02-28', NULL),
+('6', '41560741V', '2026-03-31', 'RISQUES BLASI MARIA', 1715.73, 36.99, 183.89, 0, 1678.74, true, '2026-03-31', NULL),
+('7', '14269451K', '2026-01-31', 'SORIA RODON LORENA', 2550, 165.76, 823.65, 418.97, 1965.27, true, '2026-01-31', NULL),
+('7', '14269451K', '2026-02-28', 'SORIA RODON LORENA', 2550, 165.76, 823.65, 419.73, 1964.51, true, '2026-02-28', NULL),
+('7', '14269451K', '2026-03-31', 'SORIA RODON LORENA', 1518.33, 98.69, 490.43, 249.92, 1169.72, true, '2026-03-31', NULL),
+('8', '53839267Q', '2026-03-31', 'MAESTRE FERNANDEZ CARLA', 775, 50.38, 250.34, 0, 724.62, true, '2026-03-31', NULL),
+('8', '53839267Q', '2026-04-30', 'MAESTRE FERNANDEZ CARLA', 1550, 100.76, 500.65, 0, 1449.24, true, '2026-04-30', NULL),
+('8', '53839267Q', '2026-05-31', 'MAESTRE FERNANDEZ CARLA', 1550, 100.76, 500.65, 0, 1449.24, true, '2026-05-31', NULL),
+('8', '53839267Q', '2026-06-30', 'MAESTRE FERNANDEZ CARLA', 1136.67, 73.89, 367.15, 0, 1062.78, true, '2026-06-30', NULL),
+('8', '53839267Q', '2026-06-30', 'MAESTRE FERNANDEZ CARLA', 279.99, 18.2, 90.44, 0, 261.79, true, '2026-06-30', NULL),
+('8', '53839267Q', '2026-07-31', 'MAESTRE FERNANDEZ CARLA', 560.01, 36.4, 180.88, 0, 523.61, true, '2026-07-31', NULL),
+('8', '53839267Q', '2026-07-31', 'MAESTRE FERNANDEZ CARLA', 350.96, 22.82, 113.35, 0, 328.14, true, '2026-07-31', NULL),
+('9', '77314693D', '2026-03-31', 'MARTI RAVENTOS MARC', 1050, 68.26, 339.15, 0, 981.74, true, '2026-03-31', NULL),
+('9', '77314693D', '2026-04-30', 'MARTI RAVENTOS MARC', 980, 85.8, 426.42, 0, 894.2, true, '2026-04-30', NULL),
+('9', '77314693D', '2026-05-31', 'MARTI RAVENTOS MARC', 1550, 100.76, 500.65, 0, 1449.24, true, '2026-05-31', NULL),
+('9', '77314693D', '2026-06-30', 'MARTI RAVENTOS MARC', 413.33, 26.87, 133.5, 0, 386.46, true, '2026-06-30', NULL),
+('9', '77314693D', '2026-06-30', 'MARTI RAVENTOS MARC', 300.7, 19.54, 97.13, 0, 281.16, true, '2026-06-30', NULL),
+('10', '39367104M', '2026-04-30', 'DYOWE ROIG EPITIE RUBEN', 905, 58.84, 292.31, 0, 846.16, true, '2026-04-30', NULL),
+('10', '39367104M', '2026-05-31', 'DYOWE ROIG EPITIE RUBEN', 1357.5, 88.24, 438.47, 0, 1269.26, true, '2026-05-31', NULL),
+('10', '39367104M', '2026-05-31', 'DYOWE ROIG EPITIE RUBEN', 168.93, 12.34, 61.35, 0, 156.59, true, '2026-05-31', NULL),
+('11', '52199198P', '2026-04-30', 'PINO NAVARRO MARIA AZUCENA', 1215.11, 78.98, 392.5, 46.17, 1089.96, true, '2026-04-30', NULL),
+('11', '52199198P', '2026-05-31', 'PINO NAVARRO MARIA AZUCENA', 2025.18, 131.64, 654.14, 76.96, 1816.58, true, '2026-05-31', NULL),
+('11', '52199198P', '2026-06-30', 'PINO NAVARRO MARIA AZUCENA', 2025.18, 131.64, 654.14, 76.96, 1816.58, true, '2026-06-30', NULL),
+('11', '52199198P', '2026-07-31', 'PINO NAVARRO MARIA AZUCENA', 1863.17, 131.64, 654.16, 70.8, 1660.73, true, '2026-07-31', NULL),
+('12', '38510544B', '2026-06-30', 'SANCHEZ FERNANDEZ MARIA ISABEL', 2004.08, 130.26, 647.33, 0, 1873.82, true, '2026-06-30', NULL),
+('12', '38510544B', '2026-07-31', 'SANCHEZ FERNANDEZ MARIA ISABEL', 1002.05, 65.13, 323.65, 0, 936.92, true, '2026-07-31', NULL),
+('12', '38510544B', '2026-07-31', 'SANCHEZ FERNANDEZ MARIA ISABEL', 369.03, 23.98, 119.21, 0, 345.05, true, '2026-07-31', NULL);
+
+COMMIT;
