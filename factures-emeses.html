@@ -48,9 +48,9 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
 .chip.show{display:inline-flex}
 .chip button{background:none;border:none;color:var(--blue);cursor:pointer;font-weight:800;font-size:13px;padding:0;line-height:1}
 .card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
-.tbl-wrap{overflow-x:auto}
+.tbl-wrap{overflow:auto;max-height:65vh}
 table{width:100%;border-collapse:collapse;font-size:13px}
-thead th{background:#f8f9fa;text-align:left;padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
+thead th{background:#f8f9fa;text-align:left;padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:1}
 tbody td{padding:10px 14px;border-bottom:1px solid var(--border-light)}
 tbody tr:hover{background:var(--blue-light)}
 tbody tr.void{opacity:.55}
@@ -99,7 +99,7 @@ tbody tr.void{opacity:.55}
   #main{overflow:visible;height:auto}
   #content{overflow:visible;padding:0}
   .card{box-shadow:none}
-  .tbl-wrap{overflow:visible}
+  .tbl-wrap{overflow:visible;max-height:none}
 }
 </style>
 </head>

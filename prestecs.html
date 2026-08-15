@@ -40,8 +40,9 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
 .kpi-val{font-size:22px;font-weight:800;color:var(--text)}
 .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
 .card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.tbl-wrap{overflow:auto;max-height:65vh}
 table{width:100%;border-collapse:collapse;font-size:13px}
-thead th{background:#f8f9fa;text-align:left;padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);border-bottom:1px solid var(--border)}
+thead th{background:#f8f9fa;text-align:left;padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:1}
 tbody td{padding:10px 14px;border-bottom:1px solid var(--border-light)}
 tbody tr:hover{background:var(--blue-light)}
 .num{text-align:right;font-variant-numeric:tabular-nums}
@@ -79,6 +80,7 @@ tbody tr:hover{background:var(--blue-light)}
 .toast.ok{background:var(--green)}.toast.err{background:var(--red)}.toast.inf{background:var(--blue)}
 @keyframes tin{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
 ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.2);border-radius:3px}
+@media print{ .tbl-wrap{overflow:visible;max-height:none} }
 </style>
 </head>
 <body>
@@ -119,6 +121,7 @@ tbody tr:hover{background:var(--blue-light)}
       <button class="btn btn-primary" onclick="openModal()">+ Nou préstec</button>
     </div>
     <div class="card">
+      <div class="tbl-wrap">
       <table>
         <thead><tr>
           <th>Nom</th><th>Entitat</th><th class="num">Capital inicial</th><th>Data inici</th>
@@ -126,6 +129,7 @@ tbody tr:hover{background:var(--blue-light)}
         </tr></thead>
         <tbody id="tbody"></tbody>
       </table>
+      </div>
       <div class="empty" id="empty" style="display:none">Cap préstec registrat.</div>
     </div>
   </div>
