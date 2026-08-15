@@ -52,6 +52,7 @@ tbody tr.total td{font-weight:800;border-top:2px solid var(--border)}
 tbody tr.result td{font-weight:800;color:var(--blue);background:var(--blue-light)}
 tbody tr.section td:first-child{font-weight:700;color:var(--muted);padding-top:12px}
 .pos{color:var(--green-txt)}.neg{color:var(--red-txt)}
+tbody tr.result td.neg,tbody tr.total td.neg{color:var(--red-txt)}
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
 .kpi{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);padding:14px 18px;border-left:4px solid var(--blue)}
 .kpi.g{border-left-color:var(--green)}.kpi.a{border-left-color:var(--amber)}.kpi.r{border-left-color:var(--red)}
@@ -846,6 +847,11 @@ function aggregatePerEntity(rows, idField, nomField, entityList){
   }).sort((a,b)=>a.nom.localeCompare(b.nom,'ca'));
 }
 
+function numCell(v, strong){
+  const txt = fmtMoney(v);
+  return `<td class="num${v<0?' neg':''}">${strong?'<strong>'+txt+'</strong>':txt}</td>`;
+}
+
 function renderResumTable(tbodyId, data){
   const tbody = document.getElementById(tbodyId);
   if(!data.length){ tbody.innerHTML = '<tr><td colspan="8" class="empty">Cap factura en aquest període.</td></tr>'; return {count:0, total:0}; }
@@ -854,22 +860,22 @@ function renderResumTable(tbodyId, data){
     sBase+=d.base; sIva+=d.ivaImport; sIrpf+=d.irpfImport; sTotal+=d.total;
     return `<tr>
       <td>${d.codi}</td><td>${d.nom}</td>
-      <td class="num">${fmtMoney(d.base)}</td>
+      ${numCell(d.base)}
       <td class="num">${d.ivaPct!=null ? d.ivaPct+'%' : '—'}</td>
-      <td class="num">${fmtMoney(d.ivaImport)}</td>
+      ${numCell(d.ivaImport)}
       <td class="num">${d.irpfPct!=null ? d.irpfPct+'%' : '—'}</td>
-      <td class="num">${fmtMoney(d.irpfImport)}</td>
-      <td class="num"><strong>${fmtMoney(d.total)}</strong></td>
+      ${numCell(d.irpfImport)}
+      ${numCell(d.total, true)}
     </tr>`;
   }).join('');
   const totals = `<tr class="total">
     <td colspan="2">Total (${data.length})</td>
-    <td class="num">${fmtMoney(sBase)}</td>
+    ${numCell(sBase)}
     <td></td>
-    <td class="num">${fmtMoney(sIva)}</td>
+    ${numCell(sIva)}
     <td></td>
-    <td class="num">${fmtMoney(sIrpf)}</td>
-    <td class="num">${fmtMoney(sTotal)}</td>
+    ${numCell(sIrpf)}
+    ${numCell(sTotal)}
   </tr>`;
   tbody.innerHTML = rows + totals;
   return {count:data.length, total:sTotal};
@@ -979,24 +985,24 @@ function renderDetallTable(tbodyId, rows){
     sBase+=d.base; sIva+=d.ivaImport; sIrpf+=d.irpfImport; sTotal+=d.total;
     return `<tr>
       <td>${d.codi}</td><td>${d.nom}</td><td>${d.num_factura}</td><td>${fmtDate(d.data)}</td>
-      <td class="num">${fmtMoney(d.base)}</td>
+      ${numCell(d.base)}
       <td class="num">${d.ivaPct}%</td>
-      <td class="num">${fmtMoney(d.ivaImport)}</td>
+      ${numCell(d.ivaImport)}
       <td class="num">${d.irpfPct}%</td>
-      <td class="num">${fmtMoney(d.irpfImport)}</td>
-      <td class="num"><strong>${fmtMoney(d.total)}</strong></td>
+      ${numCell(d.irpfImport)}
+      ${numCell(d.total, true)}
       <td>${d.estat}</td>
       <td>${fmtDate(d.dataMoviment)}</td>
     </tr>`;
   }).join('');
   const totals = `<tr class="total">
     <td colspan="4">Total (${rows.length})</td>
-    <td class="num">${fmtMoney(sBase)}</td>
+    ${numCell(sBase)}
     <td></td>
-    <td class="num">${fmtMoney(sIva)}</td>
+    ${numCell(sIva)}
     <td></td>
-    <td class="num">${fmtMoney(sIrpf)}</td>
-    <td class="num">${fmtMoney(sTotal)}</td>
+    ${numCell(sIrpf)}
+    ${numCell(sTotal)}
     <td></td><td></td>
   </tr>`;
   tbody.innerHTML = body + totals;

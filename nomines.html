@@ -38,6 +38,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
 .kpi.g{border-left-color:var(--green)}.kpi.a{border-left-color:var(--amber)}
 .kpi-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-bottom:6px}
 .kpi-val{font-size:22px;font-weight:800;color:var(--text)}
+.kpi-val.neg{color:var(--red-txt)}
 .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
 .toolbar select,.toolbar input{padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit}
 .toolbar input[type=text]{flex:1;min-width:160px}
@@ -47,6 +48,7 @@ thead th{background:#f8f9fa;text-align:left;padding:10px 14px;font-size:11px;tex
 tbody td{padding:10px 14px;border-bottom:1px solid var(--border-light)}
 tbody tr:hover{background:var(--blue-light)}
 .num{text-align:right;font-variant-numeric:tabular-nums}
+.num.neg{color:var(--red-txt)}
 .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
 .badge.ok{background:var(--green-bg);color:var(--green-txt)}
 .badge.pend{background:var(--amber-bg);color:var(--amber-txt)}
@@ -183,6 +185,16 @@ let rows = [];
 if(requireAuth()) load();
 
 function fmtMoney(n){ return (Number(n)||0).toLocaleString('ca-ES',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function numCell(v, strong){
+  const n = Number(v)||0;
+  const txt = fmtMoney(n);
+  return `<td class="num${n<0?' neg':''}">${strong?'<strong>'+txt+'</strong>':txt}</td>`;
+}
+function setKpiVal(id, v){
+  const el = document.getElementById(id);
+  el.textContent = fmtMoney(v);
+  el.classList.toggle('neg', Number(v)<0);
+}
 function fmtDate(d){ if(!d) return '—'; return new Date(d+'T00:00:00').toLocaleDateString('ca-ES'); }
 function toast(msg,type='inf'){
   const el=document.createElement('div'); el.className='toast '+type; el.textContent=msg;
@@ -221,9 +233,9 @@ function render(){
   const cost = filtered.reduce((s,r)=>s+Number(r.import_brut)+Number(r.ss_empresa),0);
   const netPagat = filtered.filter(r=>r.pagat).reduce((s,r)=>s+Number(r.import_net),0);
   const netPendent = filtered.filter(r=>!r.pagat).reduce((s,r)=>s+Number(r.import_net),0);
-  document.getElementById('kpi-cost').textContent = fmtMoney(cost);
-  document.getElementById('kpi-pagat').textContent = fmtMoney(netPagat);
-  document.getElementById('kpi-pendent').textContent = fmtMoney(netPendent);
+  setKpiVal('kpi-cost', cost);
+  setKpiVal('kpi-pagat', netPagat);
+  setKpiVal('kpi-pendent', netPendent);
 
   const tbody = document.getElementById('tbody');
   document.getElementById('empty').style.display = filtered.length ? 'none':'block';
@@ -232,11 +244,11 @@ function render(){
       <td>${r.codi||'—'}</td>
       <td>${fmtDate(r.data)}</td>
       <td>${r.empleat||''}</td>
-      <td class="num">${fmtMoney(r.import_brut)}</td>
-      <td class="num">${fmtMoney(r.ss_trab)}</td>
-      <td class="num">${fmtMoney(r.ss_empresa)}</td>
-      <td class="num">${fmtMoney(r.irpf)}</td>
-      <td class="num"><strong>${fmtMoney(r.import_net)}</strong></td>
+      ${numCell(r.import_brut)}
+      ${numCell(r.ss_trab)}
+      ${numCell(r.ss_empresa)}
+      ${numCell(r.irpf)}
+      ${numCell(r.import_net, true)}
       <td>${r.pagat?'<span class="badge ok">Pagat</span>':'<span class="badge pend">Pendent</span>'}</td>
       <td>${fmtDate(r.data_pagament)}</td>
       <td class="row-act">

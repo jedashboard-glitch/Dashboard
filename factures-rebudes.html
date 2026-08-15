@@ -39,6 +39,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
 .kpi.g{border-left-color:var(--green)}.kpi.a{border-left-color:var(--amber)}
 .kpi-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-bottom:6px}
 .kpi-val{font-size:22px;font-weight:800;color:var(--text)}
+.kpi-val.neg{color:var(--red-txt)}
 .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
 .toolbar select,.toolbar input{padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit}
 .toolbar input[type=text]{flex:1;min-width:160px}
@@ -58,6 +59,7 @@ tbody td{padding:10px 14px;border-bottom:1px solid var(--border-light)}
 tbody tr:hover{background:var(--blue-light)}
 tbody tr.void{opacity:.55}
 .num{text-align:right;font-variant-numeric:tabular-nums}
+.num.neg{color:var(--red-txt)}
 .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
 .badge.ok{background:var(--green-bg);color:var(--green-txt)}
 .badge.pend{background:var(--amber-bg);color:var(--amber-txt)}
@@ -311,6 +313,17 @@ function compareRows(a,b,field,dir){
 }
 
 function fmtMoney(n){ return (Number(n)||0).toLocaleString('ca-ES',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function setKpiVal(id, v){
+  const el = document.getElementById(id);
+  el.textContent = fmtMoney(v);
+  el.classList.toggle('neg', Number(v)<0);
+}
+
+function numCell(v, strong){
+  const n = Number(v)||0;
+  const txt = fmtMoney(n);
+  return `<td class="num${n<0?' neg':''}">${strong?'<strong>'+txt+'</strong>':txt}</td>`;
+}
 function fmtDate(d){ if(!d) return '—'; return new Date(d+'T00:00:00').toLocaleDateString('ca-ES'); }
 function toast(msg,type='inf'){
   const el=document.createElement('div'); el.className='toast '+type; el.textContent=msg;
@@ -392,12 +405,12 @@ function render(){
   const irpfTotal = actives.reduce((s,r)=>s+Number(r.irpf_import),0);
   const total = actives.reduce((s,r)=>s+Number(r.total),0);
   const pagat = actives.filter(r=>r.pagat).reduce((s,r)=>s+Number(r.total),0);
-  document.getElementById('kpi-base').textContent = fmtMoney(base);
-  document.getElementById('kpi-iva').textContent = fmtMoney(ivaTotal);
-  document.getElementById('kpi-irpf').textContent = fmtMoney(irpfTotal);
-  document.getElementById('kpi-total').textContent = fmtMoney(total);
-  document.getElementById('kpi-pagat').textContent = fmtMoney(pagat);
-  document.getElementById('kpi-pendent').textContent = fmtMoney(total-pagat);
+  setKpiVal('kpi-base', base);
+  setKpiVal('kpi-iva', ivaTotal);
+  setKpiVal('kpi-irpf', irpfTotal);
+  setKpiVal('kpi-total', total);
+  setKpiVal('kpi-pagat', pagat);
+  setKpiVal('kpi-pendent', total-pagat);
 
   const tbody = document.getElementById('tbody');
   document.getElementById('empty').style.display = filtered.length ? 'none':'block';
@@ -412,12 +425,12 @@ function render(){
       <td>${r.numero_serie||'—'}</td>
       <td>${fmtDate(r.data)}</td>
       <td>${r.concepte||''}</td>
-      <td class="num">${fmtMoney(r.base)}</td>
+      ${numCell(r.base)}
       <td class="num">${r.iva_pct}%</td>
-      <td class="num">${fmtMoney(r.iva_import)}</td>
+      ${numCell(r.iva_import)}
       <td class="num">${r.irpf_pct}%</td>
-      <td class="num">${fmtMoney(r.irpf_import)}</td>
-      <td class="num"><strong>${fmtMoney(r.total)}</strong></td>
+      ${numCell(r.irpf_import)}
+      ${numCell(r.total, true)}
       <td>${r.tipus_cost==='fix'?'<span class="badge fix">Fix</span>':'<span class="badge var">Variable</span>'}</td>
       <td>${estatBadge}</td>
       <td>${isVoid?fmtDate(r.data_anullacio):fmtDate(r.data_pagament)}</td>
