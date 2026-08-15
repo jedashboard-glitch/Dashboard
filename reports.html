@@ -93,6 +93,10 @@ tbody tr.section td:first-child{font-weight:700;color:var(--muted);padding-top:1
 .fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .modal-ftr{padding:16px 22px;border-top:1px solid var(--border-light);display:flex;justify-content:flex-end;gap:10px}
 .toolbar-label{font-size:12px;color:var(--muted);white-space:nowrap}
+.hdr-total{font-weight:700;font-size:14px;color:var(--text);white-space:nowrap}
+.card-hdr{flex-wrap:wrap;row-gap:8px}
+.collapse-toggle{cursor:pointer;user-select:none}
+.collapse-toggle .chev{display:inline-block;width:14px;color:var(--muted)}
 #print-header{display:none}
 @media print{
   .no-print{display:none !important}
@@ -104,6 +108,7 @@ tbody tr.section td:first-child{font-weight:700;color:var(--muted);padding-top:1
   #content{overflow:visible;padding:0}
   .card{box-shadow:none}
   .tabs{display:none}
+  [id^="body-"]{display:block !important}
 }
 </style>
 </head>
@@ -157,7 +162,8 @@ tbody tr.section td:first-child{font-weight:700;color:var(--muted);padding-top:1
     <div id="tab-resum" style="display:none">
       <div class="card">
         <div class="card-hdr">
-          <h3 style="flex:1">Resum per client</h3>
+          <h3 class="collapse-toggle" style="flex:1" onclick="toggleCard('resum-cli')"><span class="chev" id="chev-resum-cli">▼</span> Resum per client</h3>
+          <span class="hdr-total" id="total-resum-cli"></span>
           <span class="toolbar-label">Des de</span>
           <input type="date" id="ll-cli-desde" onchange="renderResum()">
           <span class="toolbar-label">Fins a</span>
@@ -165,16 +171,19 @@ tbody tr.section td:first-child{font-weight:700;color:var(--muted);padding-top:1
           <button class="btn btn-secondary no-print" onclick="imprimirResum('cli')">🖨️ Imprimir</button>
           <button class="btn btn-secondary no-print" onclick="exportarResum('cli')">📊 Exportar</button>
         </div>
+        <div id="body-resum-cli">
         <div style="overflow-x:auto">
         <table class="prev-tbl">
           <thead><tr><th>Codi</th><th>Client</th><th class="num">Base</th><th class="num">IVA %</th><th class="num">IVA</th><th class="num">IRPF %</th><th class="num">IRPF</th><th class="num">Total</th></tr></thead>
           <tbody id="tbl-resum-clients"></tbody>
         </table>
         </div>
+        </div>
       </div>
       <div class="card">
         <div class="card-hdr">
-          <h3 style="flex:1">Resum per proveïdor</h3>
+          <h3 class="collapse-toggle" style="flex:1" onclick="toggleCard('resum-prov')"><span class="chev" id="chev-resum-prov">▼</span> Resum per proveïdor</h3>
+          <span class="hdr-total" id="total-resum-prov"></span>
           <span class="toolbar-label">Des de</span>
           <input type="date" id="ll-prov-desde" onchange="renderResum()">
           <span class="toolbar-label">Fins a</span>
@@ -182,45 +191,53 @@ tbody tr.section td:first-child{font-weight:700;color:var(--muted);padding-top:1
           <button class="btn btn-secondary no-print" onclick="imprimirResum('prov')">🖨️ Imprimir</button>
           <button class="btn btn-secondary no-print" onclick="exportarResum('prov')">📊 Exportar</button>
         </div>
+        <div id="body-resum-prov">
         <div style="overflow-x:auto">
         <table class="prev-tbl">
           <thead><tr><th>Codi</th><th>Proveïdor</th><th class="num">Base</th><th class="num">IVA %</th><th class="num">IVA</th><th class="num">IRPF %</th><th class="num">IRPF</th><th class="num">Total</th></tr></thead>
           <tbody id="tbl-resum-proveidors"></tbody>
         </table>
         </div>
+        </div>
       </div>
     </div>
     <div id="tab-vendes" style="display:none">
       <div class="card">
         <div class="card-hdr">
-          <h3 style="flex:1">Vendes — Clients</h3>
+          <h3 class="collapse-toggle" style="flex:1" onclick="toggleCard('vendes-cli')"><span class="chev" id="chev-vendes-cli">▶</span> Vendes — Clients</h3>
+          <span class="hdr-total" id="total-vendes-cli"></span>
           <span class="toolbar-label">Des de</span>
           <input type="date" id="lv-cli-desde" onchange="renderVendes()">
           <span class="toolbar-label">Fins a</span>
           <input type="date" id="lv-cli-finsa" onchange="renderVendes()">
           <button class="btn btn-secondary" onclick="exportarVendes('cli')">📊 Exportar</button>
         </div>
+        <div id="body-vendes-cli" style="display:none">
         <div style="overflow-x:auto">
         <table class="prev-tbl">
           <thead><tr><th>Codi</th><th>Client</th><th>Núm. fra.</th><th>Data</th><th class="num">Base</th><th class="num">IVA %</th><th class="num">IVA</th><th class="num">IRPF %</th><th class="num">IRPF</th><th class="num">Total</th><th>Estat</th><th>Cobrament</th></tr></thead>
           <tbody id="tbl-vendes-clients"></tbody>
         </table>
         </div>
+        </div>
       </div>
       <div class="card">
         <div class="card-hdr">
-          <h3 style="flex:1">Vendes — Proveïdors</h3>
+          <h3 class="collapse-toggle" style="flex:1" onclick="toggleCard('vendes-prov')"><span class="chev" id="chev-vendes-prov">▶</span> Vendes — Proveïdors</h3>
+          <span class="hdr-total" id="total-vendes-prov"></span>
           <span class="toolbar-label">Des de</span>
           <input type="date" id="lv-prov-desde" onchange="renderVendes()">
           <span class="toolbar-label">Fins a</span>
           <input type="date" id="lv-prov-finsa" onchange="renderVendes()">
           <button class="btn btn-secondary" onclick="exportarVendes('prov')">📊 Exportar</button>
         </div>
+        <div id="body-vendes-prov" style="display:none">
         <div style="overflow-x:auto">
         <table class="prev-tbl">
           <thead><tr><th>Codi</th><th>Proveïdor</th><th>Núm. fra.</th><th>Data</th><th class="num">Base</th><th class="num">IVA %</th><th class="num">IVA</th><th class="num">IRPF %</th><th class="num">IRPF</th><th class="num">Total</th><th>Estat</th><th>Pagament</th></tr></thead>
           <tbody id="tbl-vendes-proveidors"></tbody>
         </table>
+        </div>
         </div>
       </div>
     </div>
@@ -831,7 +848,7 @@ function aggregatePerEntity(rows, idField, nomField, entityList){
 
 function renderResumTable(tbodyId, data){
   const tbody = document.getElementById(tbodyId);
-  if(!data.length){ tbody.innerHTML = '<tr><td colspan="8" class="empty">Cap factura en aquest període.</td></tr>'; return; }
+  if(!data.length){ tbody.innerHTML = '<tr><td colspan="8" class="empty">Cap factura en aquest període.</td></tr>'; return {count:0, total:0}; }
   let sBase=0, sIva=0, sIrpf=0, sTotal=0;
   const rows = data.map(d=>{
     sBase+=d.base; sIva+=d.ivaImport; sIrpf+=d.irpfImport; sTotal+=d.total;
@@ -855,18 +872,33 @@ function renderResumTable(tbodyId, data){
     <td class="num">${fmtMoney(sTotal)}</td>
   </tr>`;
   tbody.innerHTML = rows + totals;
+  return {count:data.length, total:sTotal};
+}
+
+function toggleCard(id){
+  const body = document.getElementById('body-'+id);
+  const chev = document.getElementById('chev-'+id);
+  const collapsed = body.style.display === 'none';
+  body.style.display = collapsed ? '' : 'none';
+  chev.textContent = collapsed ? '▼' : '▶';
+}
+
+function setHdrTotal(id, count, total){
+  document.getElementById('total-'+id).textContent = count ? `${count} · ${fmtMoney(total)}` : '';
 }
 
 function renderResum(){
   const cliDesde = document.getElementById('ll-cli-desde').value;
   const cliFinsa = document.getElementById('ll-cli-finsa').value;
   const cliRows = emeses.filter(r=>(!cliDesde || r.data>=cliDesde) && (!cliFinsa || r.data<=cliFinsa));
-  renderResumTable('tbl-resum-clients', aggregatePerEntity(cliRows, 'client_id', 'client', clients));
+  const cliRes = renderResumTable('tbl-resum-clients', aggregatePerEntity(cliRows, 'client_id', 'client', clients));
+  setHdrTotal('resum-cli', cliRes.count, cliRes.total);
 
   const provDesde = document.getElementById('ll-prov-desde').value;
   const provFinsa = document.getElementById('ll-prov-finsa').value;
   const provRows = rebudes.filter(r=>(!provDesde || r.data>=provDesde) && (!provFinsa || r.data<=provFinsa));
-  renderResumTable('tbl-resum-proveidors', aggregatePerEntity(provRows, 'proveidor_id', 'proveidor', proveidors));
+  const provRes = renderResumTable('tbl-resum-proveidors', aggregatePerEntity(provRows, 'proveidor_id', 'proveidor', proveidors));
+  setHdrTotal('resum-prov', provRes.count, provRes.total);
 }
 
 function imprimirResum(which){
@@ -941,7 +973,7 @@ function detallRows(rows, isClient){
 
 function renderDetallTable(tbodyId, rows){
   const tbody = document.getElementById(tbodyId);
-  if(!rows.length){ tbody.innerHTML = '<tr><td colspan="12" class="empty">Cap factura en aquest període.</td></tr>'; return; }
+  if(!rows.length){ tbody.innerHTML = '<tr><td colspan="12" class="empty">Cap factura en aquest període.</td></tr>'; return {count:0, total:0}; }
   let sBase=0, sIva=0, sIrpf=0, sTotal=0;
   const body = rows.map(d=>{
     sBase+=d.base; sIva+=d.ivaImport; sIrpf+=d.irpfImport; sTotal+=d.total;
@@ -968,18 +1000,21 @@ function renderDetallTable(tbodyId, rows){
     <td></td><td></td>
   </tr>`;
   tbody.innerHTML = body + totals;
+  return {count:rows.length, total:sTotal};
 }
 
 function renderVendes(){
   const cliDesde = document.getElementById('lv-cli-desde').value;
   const cliFinsa = document.getElementById('lv-cli-finsa').value;
   const cliRows = emeses.filter(r=>(!cliDesde || r.data>=cliDesde) && (!cliFinsa || r.data<=cliFinsa));
-  renderDetallTable('tbl-vendes-clients', detallRows(cliRows, true));
+  const cliRes = renderDetallTable('tbl-vendes-clients', detallRows(cliRows, true));
+  setHdrTotal('vendes-cli', cliRes.count, cliRes.total);
 
   const provDesde = document.getElementById('lv-prov-desde').value;
   const provFinsa = document.getElementById('lv-prov-finsa').value;
   const provRows = rebudes.filter(r=>(!provDesde || r.data>=provDesde) && (!provFinsa || r.data<=provFinsa));
-  renderDetallTable('tbl-vendes-proveidors', detallRows(provRows, false));
+  const provRes = renderDetallTable('tbl-vendes-proveidors', detallRows(provRows, false));
+  setHdrTotal('vendes-prov', provRes.count, provRes.total);
 }
 
 async function exportarVendes(which){
