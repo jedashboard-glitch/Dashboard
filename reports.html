@@ -35,6 +35,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
 #content{flex:1;overflow-y:auto;padding:20px 24px}
 .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
 .toolbar select{padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit}
+input[type=month]{padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-family:inherit}
 .tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border)}
 .tab{padding:10px 18px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent}
 .tab.active{color:var(--blue);border-bottom-color:var(--blue)}
@@ -529,7 +530,7 @@ function populateEtiquetesDatalist(){
 function renderAll(){
   const year = document.getElementById('f-any').value;
   renderPL(year);
-  renderTresoreria(year);
+  renderTresoreria();
   renderPuntMort(year);
   renderResum();
   renderVendes();
@@ -581,48 +582,126 @@ function renderPL(year){
 let tresMode = 'previsional';
 function setTresMode(m){
   tresMode = m;
-  renderTresoreria(document.getElementById('f-any').value);
+  renderTresoreria();
 }
 
-function renderTresoreria(year){
+// Finestra mòbil de 12 mesos per a la Tresoreria (independent de l'any
+// fixe que fan servir P&L i Punt mort). tresWinY/tresWinM = any i mes
+// (0-11) del PRIMER mes visible. L'"any àncora" del saldo inicial és
+// sempre tresWinY (el gener d'aquest any és el punt fix editable amb
+// "✏️ Saldo inicial"); es calcula endavant fins al mes d'inici real.
+let tresWinY = new Date().getFullYear();
+let tresWinM = new Date().getMonth();
+
+function moveTresWindow(deltaMesos){
+  const total = tresWinY*12 + tresWinM + deltaMesos;
+  tresWinY = Math.floor(total/12);
+  tresWinM = ((total%12)+12)%12;
+  renderTresoreria();
+}
+function resetTresWindow(){
+  tresWinY = new Date().getFullYear();
+  tresWinM = new Date().getMonth();
+  renderTresoreria();
+}
+function setTresWindowFromInput(val){
+  if(!val) return;
+  const [y,m] = val.split('-').map(Number);
+  tresWinY = y; tresWinM = m-1;
+  renderTresoreria();
+}
+
+function windowMonthLabel(i){
+  const total = tresWinM+i;
+  const y = tresWinY + Math.floor(total/12);
+  const m = ((total%12)+12)%12;
+  return MESOS[m]+" '"+String(y).slice(2);
+}
+
+function renderTresoreria(){
+  const monthInputVal = tresWinY+'-'+String(tresWinM+1).padStart(2,'0');
   document.getElementById('tab-tresoreria').innerHTML = `
+    <div class="toolbar">
+      <span class="toolbar-label">Finestra de 12 mesos des de</span>
+      <button class="btn btn-secondary" onclick="moveTresWindow(-1)">◀</button>
+      <input type="month" value="${monthInputVal}" onchange="setTresWindowFromInput(this.value)">
+      <button class="btn btn-secondary" onclick="moveTresWindow(1)">▶</button>
+      <button class="btn btn-secondary" onclick="resetTresWindow()">Avui</button>
+    </div>
     <div class="subtabs">
       <button class="subtab ${tresMode==='previsional'?'active':''}" onclick="setTresMode('previsional')">📅 Previsional</button>
       <button class="subtab ${tresMode==='real'?'active':''}" onclick="setTresMode('real')">✅ Real</button>
     </div>
-    ${renderTresoreriaTable(year, tresMode)}
-    ${tresMode==='previsional' ? renderIvaQuarters(year)+renderSSMonths(year)+renderPrevisionsPanel(year) : ''}
+    ${renderTresoreriaTable(tresMode)}
+    ${tresMode==='previsional' ? renderIvaQuarters()+renderSSMonths()+renderPrevisionsPanel() : ''}
   `;
 }
 
-function renderTresoreriaTable(year, mode){
+// Combina les previsions de dos anys consecutius (gY = tresWinY, gY1 =
+// tresWinY+1) en un sol grup per etiqueta amb un array de 24 mesos
+// (gener de tresWinY .. desembre de tresWinY+1), perquè es puguin
+// retallar després a la finestra de 12 mesos visible.
+function mergePrevisionGroups(gY, gY1){
+  const byKey = {};
+  gY.forEach(g=>{
+    const key = g.tipus+'|'+g.seccio+'|'+g.etiqueta;
+    byKey[key] = { etiqueta:g.etiqueta, tipus:g.tipus, seccio:g.seccio, valors24:[...g.valors, ...Array(12).fill(0)] };
+  });
+  gY1.forEach(g=>{
+    const key = g.tipus+'|'+g.seccio+'|'+g.etiqueta;
+    if(!byKey[key]) byKey[key] = { etiqueta:g.etiqueta, tipus:g.tipus, seccio:g.seccio, valors24:Array(24).fill(0) };
+    g.valors.forEach((v,i)=>{ byKey[key].valors24[12+i]+=v; });
+  });
+  return Object.values(byKey);
+}
+
+function renderTresoreriaTable(mode){
   const real = mode==='real';
-  const cobraments = calcCobraments(year, real);
-  const pagFactures = calcProveidors(year, real);
-  const pagNomines = calcSalariNet(year, real);
-  const pagQuotes = calcQuotesPrestecs(year, real);
-  const ivaTrimestral = calcLiquidacioIva(year);
-  const irpf111 = calcIrpf111(year);
-  const { ssTrab, ssEmpresa } = calcSS(year);
+  const y0 = tresWinY, y1 = tresWinY+1;
+  const win = arr24 => arr24.slice(tresWinM, tresWinM+12);
 
-  const prevGroups = real ? [] : groupPrevisions(year);
-  const prevCobrament = prevGroups.filter(g=>g.tipus==='cobrament');
-  const prevPagament = prevGroups.filter(g=>g.tipus==='pagament');
+  const cobramentsFull = [...calcCobraments(y0, real), ...calcCobraments(y1, real)];
+  const pagFacturesFull = [...calcProveidors(y0, real), ...calcProveidors(y1, real)];
+  const pagNominesFull = [...calcSalariNet(y0, real), ...calcSalariNet(y1, real)];
+  const pagQuotesFull = [...calcQuotesPrestecs(y0, real), ...calcQuotesPrestecs(y1, real)];
+  const ivaTrimestralFull = [...calcLiquidacioIva(y0), ...calcLiquidacioIva(y1)];
+  const irpf111Full = [...calcIrpf111(y0), ...calcIrpf111(y1)];
+  const ss0 = calcSS(y0), ss1 = calcSS(y1);
+  const ssTrabFull = [...ss0.ssTrab, ...ss1.ssTrab];
+  const ssEmpresaFull = [...ss0.ssEmpresa, ...ss1.ssEmpresa];
 
-  const totalCobraments = prevCobrament.reduce((acc,g)=>addArr(acc,g.valors), cobraments);
-  const totalPagaments = prevPagament.reduce((acc,g)=>addArr(acc,g.valors),
-    [pagFactures,ivaTrimestral,irpf111,pagNomines,ssTrab,ssEmpresa,pagQuotes].reduce(addArr));
-  const saldoMes = subArr(totalCobraments, totalPagaments);
+  const prevGroupsFull = real ? [] : mergePrevisionGroups(groupPrevisions(y0), groupPrevisions(y1));
+  const prevCobramentFull = prevGroupsFull.filter(g=>g.tipus==='cobrament');
+  const prevPagamentFull = prevGroupsFull.filter(g=>g.tipus==='pagament');
 
-  const saldoInicialAny = Number((saldoInicials.find(s=>s.any_liquidacio===Number(year))||{}).import || 0);
-  const saldoInicialRow = [], saldoFinalRow = [];
-  let running = saldoInicialAny;
-  saldoMes.forEach((v,i)=>{ saldoInicialRow[i]=running; running+=v; saldoFinalRow[i]=running; });
+  const totalCobramentsFull = prevCobramentFull.reduce((acc,g)=>addArr(acc,g.valors24), cobramentsFull);
+  const totalPagamentsFull = prevPagamentFull.reduce((acc,g)=>addArr(acc,g.valors24),
+    [pagFacturesFull,ivaTrimestralFull,irpf111Full,pagNominesFull,ssTrabFull,ssEmpresaFull,pagQuotesFull].reduce(addArr));
+  const saldoMesFull = subArr(totalCobramentsFull, totalPagamentsFull);
 
-  const head = '<th></th>'+MESOS.map(m=>`<th>${m}</th>`).join('')+'<th>Total</th>';
-  const blankRow = MESOS.map(()=>'<td></td>').join('');
+  // El saldo inicial editable és sempre el saldo bancari real a 1 de
+  // gener de tresWinY -- des d'aquí s'arrossega mes a mes (incloent els
+  // mesos previs a la finestra visible, si la finestra no comença al
+  // gener) per obtenir el saldo correcte al primer mes que es veu.
+  const saldoInicialAncora = Number((saldoInicials.find(s=>s.any_liquidacio===y0)||{}).import || 0);
+  const saldoInicialFull=[], saldoFinalFull=[];
+  let running = saldoInicialAncora;
+  saldoMesFull.forEach((v,i)=>{ saldoInicialFull[i]=running; running+=v; saldoFinalFull[i]=running; });
+
+  const cobraments=win(cobramentsFull), pagFactures=win(pagFacturesFull), pagNomines=win(pagNominesFull),
+        pagQuotes=win(pagQuotesFull), ivaTrimestral=win(ivaTrimestralFull), irpf111=win(irpf111Full),
+        ssTrab=win(ssTrabFull), ssEmpresa=win(ssEmpresaFull),
+        totalCobraments=win(totalCobramentsFull), totalPagaments=win(totalPagamentsFull),
+        saldoMes=win(saldoMesFull), saldoInicialRow=win(saldoInicialFull), saldoFinalRow=win(saldoFinalFull);
+
+  const prevCobrament = prevCobramentFull.map(g=>({...g, valors:win(g.valors24)}));
+  const prevPagament = prevPagamentFull.map(g=>({...g, valors:win(g.valors24)}));
+
+  const head = '<th></th>'+Array.from({length:12},(_,i)=>`<th>${windowMonthLabel(i)}</th>`).join('')+'<th>Total</th>';
+  const blankRow = Array.from({length:12},()=>'<td></td>').join('');
   const prevRowsCobrament = prevCobrament.map(g=>rowHTML('(+) '+g.etiqueta, g.valors)).join('');
   const prevRowsSeccio = s => prevPagament.filter(g=>g.seccio===s).map(g=>rowHTML('(-) '+g.etiqueta, g.valors)).join('');
+  const rangeLabel = windowMonthLabel(0)+' – '+windowMonthLabel(11);
 
   const nota = real
     ? 'Vista Real: només compta moviments confirmats (cobrat/pagat) amb la seva data real. La liquidació d\'IVA, l\'IRPF/111 i la SS es mostren igualment perquè són pagaments obligatoris sense marca de "pagat" pròpia.'
@@ -630,7 +709,7 @@ function renderTresoreriaTable(year, mode){
 
   return `
     <div class="card">
-      <div class="card-hdr"><h3>Moviments de tresoreria ${year} (criteri de caixa)</h3><button class="btn btn-secondary" onclick="editSaldoInicial('${year}')">✏️ Saldo inicial</button></div>
+      <div class="card-hdr"><h3>Moviments de tresoreria ${rangeLabel} (criteri de caixa)</h3><button class="btn btn-secondary" onclick="editSaldoInicial()">✏️ Saldo inicial (gener ${y0})</button></div>
       <div style="overflow-x:auto">
       <table>
         <thead><tr>${head}</tr></thead>
@@ -660,12 +739,12 @@ function renderTresoreriaTable(year, mode){
         </tbody>
       </table>
       </div>
-      <p class="muted-note">${nota} Tots els imports de cobraments i pagaments es mostren en positiu (com un pressupost bancari); només "Saldo del mes" i "Saldo final" resten pagaments de cobraments. El Saldo inicial de gener és editable ("✏️ Saldo inicial" de dalt) i correspon al saldo bancari real a 1 de gener de ${year}; els mesos següents l'arrosseguen sols des del Saldo final anterior. La liquidació d'IVA i l'IRPF/111 no compensen saldos negatius entre períodes.</p>
+      <p class="muted-note">${nota} Tots els imports de cobraments i pagaments es mostren en positiu (com un pressupost bancari); només "Saldo del mes" i "Saldo final" resten pagaments de cobraments. El Saldo inicial de gener és editable ("✏️ Saldo inicial" de dalt) i correspon al saldo bancari real a 1 de gener de ${y0}; els mesos següents l'arrosseguen sols des del Saldo final anterior, encara que caiguin fora de la finestra visible. La liquidació d'IVA i l'IRPF/111 no compensen saldos negatius entre períodes.</p>
     </div>`;
 }
 
-async function editSaldoInicial(year){
-  const y = Number(year);
+async function editSaldoInicial(){
+  const y = tresWinY;
   const current = Number((saldoInicials.find(s=>s.any_liquidacio===y)||{}).import || 0);
   const input = prompt(`Saldo bancari real a 1 de gener de ${y}:`, current);
   if(input===null) return;
@@ -680,14 +759,20 @@ async function editSaldoInicial(year){
   }catch(e){ toast('Error desant: '+e.message,'err'); }
 }
 
-function renderSSMonths(year){
-  const ms = monthsForSS(year);
+function inTresWindow(payYear, payMonth){
+  const abs = payYear*12+payMonth;
+  const winStart = tresWinY*12+tresWinM;
+  return abs>=winStart && abs<winStart+12;
+}
+
+function renderSSMonths(){
+  const ms = [...monthsForSS(tresWinY), ...monthsForSS(tresWinY+1)].filter(m=>inTresWindow(m.payY, m.payMonth));
   const rows = ms.map(m=>`
     <tr>
       <td>${m.label}</td>
       <td class="num">${fmtMoney2(m.ssTrab)}</td>
       <td class="num">${fmtMoney2(m.ssEmpresa)}</td>
-      <td>${MESOS[m.payMonth]}</td>
+      <td>${MESOS[m.payMonth]} '${String(m.payY).slice(2)}</td>
       <td>
         ${m.ajornat
           ? `<button class="btn btn-secondary" onclick="toggleSSAjornament(${m.ay},${m.am},false)">✕ Treure ajornament</button>`
@@ -707,15 +792,20 @@ function renderSSMonths(year){
     </div>`;
 }
 
-function renderIvaQuarters(year){
-  const qs = quartersDeLAny(year);
+// quartersDeLAny(y) sempre paga dins l'any y (per definició de la funció:
+// el T4 de l'any anterior es paga el gener DE y). payYear és sempre y.
+function renderIvaQuarters(){
+  const qs = [
+    ...quartersDeLAny(tresWinY).map(q=>({...q, payYear:tresWinY})),
+    ...quartersDeLAny(tresWinY+1).map(q=>({...q, payYear:tresWinY+1}))
+  ].filter(q=>inTresWindow(q.payYear, q.payMonth));
   const rows = qs.map(q=>`
     <tr>
       <td>${q.label}</td>
       <td class="num">${fmtMoney2(q.repercutit)}</td>
       <td class="num">${fmtMoney2(q.suportat)}</td>
       <td class="num"><strong>${fmtMoney2(q.liquidacio)}</strong></td>
-      <td>${MESOS[q.payMonth]}</td>
+      <td>${MESOS[q.payMonth]} '${String(q.payYear).slice(2)}</td>
       <td>
         ${q.ajornat
           ? `<button class="btn btn-secondary" onclick="toggleAjornament(${q.qy},${q.qi},false)">✕ Treure ajornament</button>`
@@ -737,22 +827,23 @@ function renderIvaQuarters(year){
 
 const SECCIO_LABELS = { proveidors:'Proveïdors', hisenda:'Hisenda', personal:'Personal', financament:'Finançament' };
 
-// Una previsió "afecta" l'any si algun dels seus mesos (data d'inici +
-// termini_mesos, puntual = 1 mes) cau dins d'aquell any -- necessari
-// perquè una recurrent pot començar en un any i seguir vigent en els
-// següents.
-function previsioAfectaAny(p, year){
-  const y = Number(year);
+// Una previsió "afecta" la finestra visible si el seu rang de mesos (data
+// d'inici + termini_mesos, puntual = 1 mes) es solapa amb els 12 mesos
+// mostrats -- necessari perquè una recurrent pot haver començat abans de
+// la finestra i seguir vigent dins seu.
+function previsioAfectaWindow(p){
   const startY = Number(p.data.slice(0,4)), startM = Number(p.data.slice(5,7))-1;
   const termini = p.termini_mesos || 1;
-  const endTotalM = startM + termini - 1;
-  const endY = startY + Math.floor(endTotalM/12);
-  return y>=startY && y<=endY;
+  const pStartAbs = startY*12+startM;
+  const pEndAbs = pStartAbs + termini - 1;
+  const winStartAbs = tresWinY*12+tresWinM;
+  const winEndAbs = winStartAbs + 11;
+  return pStartAbs<=winEndAbs && pEndAbs>=winStartAbs;
 }
 
-function renderPrevisionsPanel(year){
-  const forYear = previsions.filter(p=>p.data && previsioAfectaAny(p, year)).sort((a,b)=>a.data<b.data?-1:1);
-  const rows = forYear.map(p=>`
+function renderPrevisionsPanel(){
+  const forWindow = previsions.filter(p=>p.data && previsioAfectaWindow(p)).sort((a,b)=>a.data<b.data?-1:1);
+  const rows = forWindow.map(p=>`
     <tr>
       <td>${p.etiqueta}</td>
       <td>${p.tipus==='cobrament'?'Cobrament':'Pagament'}</td>
@@ -765,16 +856,17 @@ function renderPrevisionsPanel(year){
         <button class="icon-btn" onclick="openPrevisioModal(${p.id})" title="Editar">✏️</button>
       </td>
     </tr>`).join('');
+  const rangeLabel = windowMonthLabel(0)+' – '+windowMonthLabel(11);
   return `
     <div class="card">
-      <div class="card-hdr"><h3>Previsions manuals ${year}</h3><button class="btn btn-primary" onclick="openPrevisioModal()">+ Nova previsió</button></div>
+      <div class="card-hdr"><h3>Previsions manuals (${rangeLabel})</h3><button class="btn btn-primary" onclick="openPrevisioModal()">+ Nova previsió</button></div>
       <div style="overflow-x:auto">
       <table class="prev-tbl">
         <thead><tr><th>Etiqueta</th><th>Tipus</th><th>Secció</th><th>Data d'inici</th><th class="num">Import mensual</th><th>Termini</th><th>Notes</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
       </div>
-      ${!forYear.length ? '<div class="empty">Cap previsió per a '+year+'.</div>' : ''}
+      ${!forWindow.length ? '<div class="empty">Cap previsió en aquest període.</div>' : ''}
     </div>`;
 }
 
