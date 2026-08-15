@@ -144,7 +144,7 @@ tbody tr.result td.neg,tbody tr.total td.neg{color:var(--red-txt)}
     <button class="btn btn-secondary btn-sm" onclick="doLogout()" style="padding:5px 10px;font-size:12px;border-radius:6px;background:#fff;border:1px solid var(--border);cursor:pointer">⏻ Sortir</button>
   </header>
   <div id="content">
-    <div class="toolbar no-print">
+    <div class="toolbar no-print" id="any-toolbar">
       <select id="f-any" onchange="renderAll()"></select>
     </div>
     <div id="print-header">
@@ -349,6 +349,9 @@ function showTab(tab){
     document.getElementById('tab-'+t).style.display = t===tab ? 'block':'none';
     document.querySelector(`.tab[data-tab="${t}"]`).classList.toggle('active', t===tab);
   });
+  // El selector d'any nomes l'usen P&L i Punt mort -- Tresoreria te la seva
+  // propia finestra de mesos, i Resum/Vendes els seus propis filtres de data.
+  document.getElementById('any-toolbar').style.display = (tab==='pl'||tab==='puntmort') ? '' : 'none';
 }
 
 function monthlySumsBy(rows, dateFn, valueFn, year){
@@ -842,8 +845,14 @@ function previsioAfectaWindow(p){
   return pStartAbs<=winEndAbs && pEndAbs>=winStartAbs;
 }
 
+// Cobraments primer (per data d'inici, FIFO), despres pagaments (igual),
+// com ja fa la taula de moviments de Tresoreria -- en lloc de barrejar-ho
+// tot per data.
 function renderPrevisionsPanel(){
-  const forWindow = previsions.filter(p=>p.data && previsioAfectaWindow(p)).sort((a,b)=>a.data<b.data?-1:1);
+  const forWindow = previsions.filter(p=>p.data && previsioAfectaWindow(p)).sort((a,b)=>{
+    if(a.tipus!==b.tipus) return a.tipus==='cobrament' ? -1 : 1;
+    return a.data<b.data ? -1 : (a.data>b.data ? 1 : 0);
+  });
   const rows = forWindow.map(p=>`
     <tr>
       <td>${p.etiqueta}</td>
