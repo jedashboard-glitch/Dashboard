@@ -539,7 +539,8 @@ function rowHTML(label, arr, opts={}){
   const cls = opts.cls || '';
   const fmt = opts.money2 ? fmtMoney2 : fmtMoney;
   const cells = arr.map(v=>`<td class="${v<0?'neg':''}">${fmt(v)}</td>`).join('');
-  return `<tr class="${cls}"><td>${label}</td>${cells}<td>${fmt(sum(arr))}</td></tr>`;
+  const total = sum(arr);
+  return `<tr class="${cls}"><td>${label}</td>${cells}<td class="${total<0?'neg':''}">${fmt(total)}</td></tr>`;
 }
 
 function renderPL(year){
