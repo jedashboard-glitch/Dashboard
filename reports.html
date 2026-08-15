@@ -140,29 +140,30 @@ tbody tr.section td:first-child{font-weight:700;color:var(--muted);padding-top:1
       <select id="f-any" onchange="renderAll()"></select>
     </div>
     <div id="print-header">
-      <h2>Financials — Llistats</h2>
+      <h2>Financials — Resum</h2>
       <p id="print-filtre-llistats"></p>
     </div>
     <div class="tabs">
       <div class="tab active" data-tab="pl" onclick="showTab('pl')">Compte de resultats (P&amp;L)</div>
       <div class="tab" data-tab="tresoreria" onclick="showTab('tresoreria')">Tresoreria</div>
       <div class="tab" data-tab="puntmort" onclick="showTab('puntmort')">Punt mort</div>
-      <div class="tab" data-tab="llistats" onclick="showTab('llistats')">Llistats</div>
+      <div class="tab" data-tab="resum" onclick="showTab('resum')">Resum per client/proveïdor</div>
+      <div class="tab" data-tab="vendes" onclick="showTab('vendes')">Vendes clients/proveïdors</div>
     </div>
 
     <div id="tab-pl"></div>
     <div id="tab-tresoreria" style="display:none"></div>
     <div id="tab-puntmort" style="display:none"></div>
-    <div id="tab-llistats" style="display:none">
+    <div id="tab-resum" style="display:none">
       <div class="card">
         <div class="card-hdr">
           <h3 style="flex:1">Resum per client</h3>
           <span class="toolbar-label">Des de</span>
-          <input type="date" id="ll-cli-desde" onchange="renderLlistats()">
+          <input type="date" id="ll-cli-desde" onchange="renderResum()">
           <span class="toolbar-label">Fins a</span>
-          <input type="date" id="ll-cli-finsa" onchange="renderLlistats()">
-          <button class="btn btn-secondary no-print" onclick="imprimirLlistat('cli')">🖨️ Imprimir</button>
-          <button class="btn btn-secondary no-print" onclick="exportarLlistat('cli')">📊 Exportar</button>
+          <input type="date" id="ll-cli-finsa" onchange="renderResum()">
+          <button class="btn btn-secondary no-print" onclick="imprimirResum('cli')">🖨️ Imprimir</button>
+          <button class="btn btn-secondary no-print" onclick="exportarResum('cli')">📊 Exportar</button>
         </div>
         <div style="overflow-x:auto">
         <table class="prev-tbl">
@@ -175,16 +176,50 @@ tbody tr.section td:first-child{font-weight:700;color:var(--muted);padding-top:1
         <div class="card-hdr">
           <h3 style="flex:1">Resum per proveïdor</h3>
           <span class="toolbar-label">Des de</span>
-          <input type="date" id="ll-prov-desde" onchange="renderLlistats()">
+          <input type="date" id="ll-prov-desde" onchange="renderResum()">
           <span class="toolbar-label">Fins a</span>
-          <input type="date" id="ll-prov-finsa" onchange="renderLlistats()">
-          <button class="btn btn-secondary no-print" onclick="imprimirLlistat('prov')">🖨️ Imprimir</button>
-          <button class="btn btn-secondary no-print" onclick="exportarLlistat('prov')">📊 Exportar</button>
+          <input type="date" id="ll-prov-finsa" onchange="renderResum()">
+          <button class="btn btn-secondary no-print" onclick="imprimirResum('prov')">🖨️ Imprimir</button>
+          <button class="btn btn-secondary no-print" onclick="exportarResum('prov')">📊 Exportar</button>
         </div>
         <div style="overflow-x:auto">
         <table class="prev-tbl">
           <thead><tr><th>Codi</th><th>Proveïdor</th><th class="num">Base</th><th class="num">IVA %</th><th class="num">IVA</th><th class="num">IRPF %</th><th class="num">IRPF</th><th class="num">Total</th></tr></thead>
           <tbody id="tbl-resum-proveidors"></tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+    <div id="tab-vendes" style="display:none">
+      <div class="card">
+        <div class="card-hdr">
+          <h3 style="flex:1">Vendes — Clients</h3>
+          <span class="toolbar-label">Des de</span>
+          <input type="date" id="lv-cli-desde" onchange="renderVendes()">
+          <span class="toolbar-label">Fins a</span>
+          <input type="date" id="lv-cli-finsa" onchange="renderVendes()">
+          <button class="btn btn-secondary" onclick="exportarVendes('cli')">📊 Exportar</button>
+        </div>
+        <div style="overflow-x:auto">
+        <table class="prev-tbl">
+          <thead><tr><th>Codi</th><th>Client</th><th>Núm. fra.</th><th>Data</th><th class="num">Base</th><th class="num">IVA %</th><th class="num">IVA</th><th class="num">IRPF %</th><th class="num">IRPF</th><th class="num">Total</th><th>Estat</th><th>Cobrament</th></tr></thead>
+          <tbody id="tbl-vendes-clients"></tbody>
+        </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr">
+          <h3 style="flex:1">Vendes — Proveïdors</h3>
+          <span class="toolbar-label">Des de</span>
+          <input type="date" id="lv-prov-desde" onchange="renderVendes()">
+          <span class="toolbar-label">Fins a</span>
+          <input type="date" id="lv-prov-finsa" onchange="renderVendes()">
+          <button class="btn btn-secondary" onclick="exportarVendes('prov')">📊 Exportar</button>
+        </div>
+        <div style="overflow-x:auto">
+        <table class="prev-tbl">
+          <thead><tr><th>Codi</th><th>Proveïdor</th><th>Núm. fra.</th><th>Data</th><th class="num">Base</th><th class="num">IVA %</th><th class="num">IVA</th><th class="num">IRPF %</th><th class="num">IRPF</th><th class="num">Total</th><th>Estat</th><th>Pagament</th></tr></thead>
+          <tbody id="tbl-vendes-proveidors"></tbody>
         </table>
         </div>
       </div>
@@ -274,7 +309,7 @@ function fillAnys(){
 }
 
 function showTab(tab){
-  ['pl','tresoreria','puntmort','llistats'].forEach(t=>{
+  ['pl','tresoreria','puntmort','resum','vendes'].forEach(t=>{
     document.getElementById('tab-'+t).style.display = t===tab ? 'block':'none';
     document.querySelector(`.tab[data-tab="${t}"]`).classList.toggle('active', t===tab);
   });
@@ -451,7 +486,8 @@ function renderAll(){
   renderPL(year);
   renderTresoreria(year);
   renderPuntMort(year);
-  renderLlistats();
+  renderResum();
+  renderVendes();
 }
 
 function rowHTML(label, arr, opts={}){
@@ -765,7 +801,7 @@ async function delPrevisio(){
   }catch(e){ toast('Error eliminant: '+e.message,'err'); }
 }
 
-// ── Llistats: resum per client / per proveïdor ─────────────────────────────
+// ── Resum: una fila per client / per proveïdor (agregat) ───────────────────
 
 function fmtDate(d){ if(!d) return '—'; return new Date(d+'T00:00:00').toLocaleDateString('ca-ES'); }
 
@@ -821,7 +857,7 @@ function renderResumTable(tbodyId, data){
   tbody.innerHTML = rows + totals;
 }
 
-function renderLlistats(){
+function renderResum(){
   const cliDesde = document.getElementById('ll-cli-desde').value;
   const cliFinsa = document.getElementById('ll-cli-finsa').value;
   const cliRows = emeses.filter(r=>(!cliDesde || r.data>=cliDesde) && (!cliFinsa || r.data<=cliFinsa));
@@ -833,7 +869,7 @@ function renderLlistats(){
   renderResumTable('tbl-resum-proveidors', aggregatePerEntity(provRows, 'proveidor_id', 'proveidor', proveidors));
 }
 
-function imprimirLlistat(which){
+function imprimirResum(which){
   const desde = document.getElementById('ll-'+which+'-desde').value;
   const finsa = document.getElementById('ll-'+which+'-finsa').value;
   const parts = [];
@@ -859,7 +895,7 @@ function loadXLSX(){
   return xlsxLoading;
 }
 
-async function exportarLlistat(which){
+async function exportarResum(which){
   try{
     await loadXLSX();
     const desde = document.getElementById('ll-'+which+'-desde').value;
@@ -876,6 +912,90 @@ async function exportarLlistat(which){
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, which==='cli' ? 'Resum clients' : 'Resum proveïdors');
     XLSX.writeFile(wb, 'resum-'+(which==='cli'?'clients':'proveidors')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  }catch(e){ toast('Error exportant: '+e.message,'err'); }
+}
+
+// ── Vendes: llistat detallat (una fila per factura), nomes exportable ──────
+
+function entityLookup(r, isClient){
+  const list = isClient ? clients : proveidors;
+  const idField = isClient ? 'client_id' : 'proveidor_id';
+  const nomFallback = isClient ? r.client : r.proveidor;
+  const entity = list.find(e=>e.id===r[idField]);
+  return { codi: entity ? (entity.codi||'—') : '—', nom: entity ? entity.nom : (nomFallback||'—') };
+}
+
+function detallRows(rows, isClient){
+  return rows.map(r=>{
+    const { codi, nom } = entityLookup(r, isClient);
+    const isVoid = r.estat==='anullada';
+    const cobratPagat = isClient ? r.cobrat : r.pagat;
+    const estat = isVoid ? 'Anul·lada' : (cobratPagat ? (isClient?'Cobrat':'Pagat') : 'Pendent');
+    const dataMoviment = isVoid ? r.data_anullacio : (isClient ? r.data_cobrament : r.data_pagament);
+    return { codi, nom, num_factura:r.num_factura||'—', data:r.data,
+      base:Number(r.base), ivaPct:Number(r.iva_pct), ivaImport:Number(r.iva_import),
+      irpfPct:Number(r.irpf_pct), irpfImport:Number(r.irpf_import), total:Number(r.total),
+      estat, dataMoviment };
+  }).sort((a,b)=> a.nom.localeCompare(b.nom,'ca') || (a.data<b.data?-1:1));
+}
+
+function renderDetallTable(tbodyId, rows){
+  const tbody = document.getElementById(tbodyId);
+  if(!rows.length){ tbody.innerHTML = '<tr><td colspan="12" class="empty">Cap factura en aquest període.</td></tr>'; return; }
+  let sBase=0, sIva=0, sIrpf=0, sTotal=0;
+  const body = rows.map(d=>{
+    sBase+=d.base; sIva+=d.ivaImport; sIrpf+=d.irpfImport; sTotal+=d.total;
+    return `<tr>
+      <td>${d.codi}</td><td>${d.nom}</td><td>${d.num_factura}</td><td>${fmtDate(d.data)}</td>
+      <td class="num">${fmtMoney(d.base)}</td>
+      <td class="num">${d.ivaPct}%</td>
+      <td class="num">${fmtMoney(d.ivaImport)}</td>
+      <td class="num">${d.irpfPct}%</td>
+      <td class="num">${fmtMoney(d.irpfImport)}</td>
+      <td class="num"><strong>${fmtMoney(d.total)}</strong></td>
+      <td>${d.estat}</td>
+      <td>${fmtDate(d.dataMoviment)}</td>
+    </tr>`;
+  }).join('');
+  const totals = `<tr class="total">
+    <td colspan="4">Total (${rows.length})</td>
+    <td class="num">${fmtMoney(sBase)}</td>
+    <td></td>
+    <td class="num">${fmtMoney(sIva)}</td>
+    <td></td>
+    <td class="num">${fmtMoney(sIrpf)}</td>
+    <td class="num">${fmtMoney(sTotal)}</td>
+    <td></td><td></td>
+  </tr>`;
+  tbody.innerHTML = body + totals;
+}
+
+function renderVendes(){
+  const cliDesde = document.getElementById('lv-cli-desde').value;
+  const cliFinsa = document.getElementById('lv-cli-finsa').value;
+  const cliRows = emeses.filter(r=>(!cliDesde || r.data>=cliDesde) && (!cliFinsa || r.data<=cliFinsa));
+  renderDetallTable('tbl-vendes-clients', detallRows(cliRows, true));
+
+  const provDesde = document.getElementById('lv-prov-desde').value;
+  const provFinsa = document.getElementById('lv-prov-finsa').value;
+  const provRows = rebudes.filter(r=>(!provDesde || r.data>=provDesde) && (!provFinsa || r.data<=provFinsa));
+  renderDetallTable('tbl-vendes-proveidors', detallRows(provRows, false));
+}
+
+async function exportarVendes(which){
+  try{
+    await loadXLSX();
+    const desde = document.getElementById('lv-'+which+'-desde').value;
+    const finsa = document.getElementById('lv-'+which+'-finsa').value;
+    const isClient = which==='cli';
+    const rows = (isClient ? emeses : rebudes).filter(r=>(!desde || r.data>=desde) && (!finsa || r.data<=finsa));
+    const data = detallRows(rows, isClient);
+    const header = ['Codi', isClient?'Client':'Proveïdor', 'Núm. fra.', 'Data', 'Base', 'IVA %', 'IVA', 'IRPF %', 'IRPF', 'Total', 'Estat', isClient?'Cobrament':'Pagament'];
+    const aoa = [header, ...data.map(d=>[d.codi, d.nom, d.num_factura, fmtDate(d.data), d.base, d.ivaPct, d.ivaImport, d.irpfPct, d.irpfImport, d.total, d.estat, fmtDate(d.dataMoviment)])];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, isClient ? 'Vendes clients' : 'Vendes proveïdors');
+    XLSX.writeFile(wb, 'vendes-'+(isClient?'clients':'proveidors')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
   }catch(e){ toast('Error exportant: '+e.message,'err'); }
 }
 </script>
