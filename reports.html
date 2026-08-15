@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard — Reports</title>
+<title>Dashboard — Financials</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -92,11 +92,24 @@ tbody tr.section td:first-child{font-weight:700;color:var(--muted);padding-top:1
 .fg input[type=number],.fg input:disabled{text-align:right}
 .fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .modal-ftr{padding:16px 22px;border-top:1px solid var(--border-light);display:flex;justify-content:flex-end;gap:10px}
+.toolbar-label{font-size:12px;color:var(--muted);white-space:nowrap}
+#print-header{display:none}
+@media print{
+  .no-print{display:none !important}
+  #print-header{display:block !important;margin-bottom:14px}
+  #print-header h2{font-size:18px;margin-bottom:4px}
+  #print-header p{font-size:12px;color:var(--muted)}
+  body{overflow:visible;height:auto;background:#fff}
+  #main{overflow:visible;height:auto}
+  #content{overflow:visible;padding:0}
+  .card{box-shadow:none}
+  .tabs{display:none}
+}
 </style>
 </head>
 <body>
 <div id="app">
-<nav id="sidebar">
+<nav id="sidebar" class="no-print">
   <div id="logo-area" onclick="location.href='index.html'">
     <div class="logo-main">📊 Dashboard</div>
     <div class="logo-sub">Gestió financera</div>
@@ -112,29 +125,70 @@ tbody tr.section td:first-child{font-weight:700;color:var(--muted);padding-top:1
     <div class="nav-item" onclick="location.href='nomines.html'"><span class="ico">👥</span> Nòmines</div>
     <div class="nav-item" onclick="location.href='prestecs.html'"><span class="ico">🏦</span> Préstecs</div>
     <div class="nav-section">Anàlisi</div>
-    <div class="nav-item active" onclick="location.href='reports.html'"><span class="ico">📈</span> Reports</div>
+    <div class="nav-item active" onclick="location.href='reports.html'"><span class="ico">📈</span> Financials</div>
   </div>
   <div class="nav-footer">Dashboard v1.0</div>
 </nav>
 <main id="main">
-  <header id="topbar">
-    <h1>Reports</h1>
+  <header id="topbar" class="no-print">
+    <h1>Financials</h1>
     <span id="user-email" style="font-size:12px;color:var(--muted);margin-right:4px"></span>
     <button class="btn btn-secondary btn-sm" onclick="doLogout()" style="padding:5px 10px;font-size:12px;border-radius:6px;background:#fff;border:1px solid var(--border);cursor:pointer">⏻ Sortir</button>
   </header>
   <div id="content">
-    <div class="toolbar">
+    <div class="toolbar no-print">
       <select id="f-any" onchange="renderAll()"></select>
+    </div>
+    <div id="print-header">
+      <h2>Financials — Llistats</h2>
+      <p id="print-filtre-llistats"></p>
     </div>
     <div class="tabs">
       <div class="tab active" data-tab="pl" onclick="showTab('pl')">Compte de resultats (P&amp;L)</div>
       <div class="tab" data-tab="tresoreria" onclick="showTab('tresoreria')">Tresoreria</div>
       <div class="tab" data-tab="puntmort" onclick="showTab('puntmort')">Punt mort</div>
+      <div class="tab" data-tab="llistats" onclick="showTab('llistats')">Llistats</div>
     </div>
 
     <div id="tab-pl"></div>
     <div id="tab-tresoreria" style="display:none"></div>
     <div id="tab-puntmort" style="display:none"></div>
+    <div id="tab-llistats" style="display:none">
+      <div class="card">
+        <div class="card-hdr">
+          <h3 style="flex:1">Resum per client</h3>
+          <span class="toolbar-label">Des de</span>
+          <input type="date" id="ll-cli-desde" onchange="renderLlistats()">
+          <span class="toolbar-label">Fins a</span>
+          <input type="date" id="ll-cli-finsa" onchange="renderLlistats()">
+          <button class="btn btn-secondary no-print" onclick="imprimirLlistat('cli')">🖨️ Imprimir</button>
+          <button class="btn btn-secondary no-print" onclick="exportarLlistat('cli')">📊 Exportar</button>
+        </div>
+        <div style="overflow-x:auto">
+        <table class="prev-tbl">
+          <thead><tr><th>Codi</th><th>Client</th><th class="num">Base</th><th class="num">IVA %</th><th class="num">IVA</th><th class="num">IRPF %</th><th class="num">IRPF</th><th class="num">Total</th></tr></thead>
+          <tbody id="tbl-resum-clients"></tbody>
+        </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr">
+          <h3 style="flex:1">Resum per proveïdor</h3>
+          <span class="toolbar-label">Des de</span>
+          <input type="date" id="ll-prov-desde" onchange="renderLlistats()">
+          <span class="toolbar-label">Fins a</span>
+          <input type="date" id="ll-prov-finsa" onchange="renderLlistats()">
+          <button class="btn btn-secondary no-print" onclick="imprimirLlistat('prov')">🖨️ Imprimir</button>
+          <button class="btn btn-secondary no-print" onclick="exportarLlistat('prov')">📊 Exportar</button>
+        </div>
+        <div style="overflow-x:auto">
+        <table class="prev-tbl">
+          <thead><tr><th>Codi</th><th>Proveïdor</th><th class="num">Base</th><th class="num">IVA %</th><th class="num">IVA</th><th class="num">IRPF %</th><th class="num">IRPF</th><th class="num">Total</th></tr></thead>
+          <tbody id="tbl-resum-proveidors"></tbody>
+        </table>
+        </div>
+      </div>
+    </div>
   </div>
 </main>
 </div>
@@ -174,7 +228,8 @@ tbody tr.section td:first-child{font-weight:700;color:var(--muted);padding-top:1
 <script src="js/neon-client.js"></script>
 <script>
 const MESOS = ['Gen','Feb','Mar','Abr','Mai','Jun','Jul','Ago','Set','Oct','Nov','Des'];
-let emeses=[], rebudes=[], nomines=[], quotes=[], previsions=[], ajornaments=[], ssAjornaments=[], saldoInicials=[];
+let emeses=[], rebudes=[], nomines=[], quotes=[], previsions=[], ajornaments=[], ssAjornaments=[], saldoInicials=[], clients=[], proveidors=[];
+let xlsxLoading = null;
 
 if(requireAuth()) load();
 
@@ -188,7 +243,7 @@ function toast(msg,type='inf'){
 async function load(){
   try{
     let rebudesRaw;
-    [emeses, rebudesRaw, nomines, quotes, previsions, ajornaments, ssAjornaments, saldoInicials] = await Promise.all([
+    [emeses, rebudesRaw, nomines, quotes, previsions, ajornaments, ssAjornaments, saldoInicials, clients, proveidors] = await Promise.all([
       sbGet('factures_emeses','select=*'),
       sbGet('factures_rebudes','select=*'),
       sbGet('nomines','select=*'),
@@ -196,7 +251,9 @@ async function load(){
       sbGet('previsions_tresoreria','select=*&order=data.asc'),
       sbGet('iva_ajornaments','select=*'),
       sbGet('ss_ajornaments','select=*'),
-      sbGet('saldo_inicial_tresoreria','select=*')
+      sbGet('saldo_inicial_tresoreria','select=*'),
+      sbGet('clients','select=id,codi,nom&order=nom.asc'),
+      sbGet('proveidors','select=id,codi,nom&order=nom.asc')
     ]);
     // Les factures anul·lades no compten en cap report (igual que a la resta del Dashboard).
     emeses = emeses.filter(r=>r.estat!=='anullada');
@@ -217,7 +274,7 @@ function fillAnys(){
 }
 
 function showTab(tab){
-  ['pl','tresoreria','puntmort'].forEach(t=>{
+  ['pl','tresoreria','puntmort','llistats'].forEach(t=>{
     document.getElementById('tab-'+t).style.display = t===tab ? 'block':'none';
     document.querySelector(`.tab[data-tab="${t}"]`).classList.toggle('active', t===tab);
   });
@@ -394,6 +451,7 @@ function renderAll(){
   renderPL(year);
   renderTresoreria(year);
   renderPuntMort(year);
+  renderLlistats();
 }
 
 function rowHTML(label, arr, opts={}){
@@ -705,6 +763,120 @@ async function delPrevisio(){
     populateEtiquetesDatalist();
     renderAll();
   }catch(e){ toast('Error eliminant: '+e.message,'err'); }
+}
+
+// ── Llistats: resum per client / per proveïdor ─────────────────────────────
+
+function fmtDate(d){ if(!d) return '—'; return new Date(d+'T00:00:00').toLocaleDateString('ca-ES'); }
+
+function aggregatePerEntity(rows, idField, nomField, entityList){
+  const groups = {};
+  rows.forEach(r=>{
+    const key = r[idField] != null ? String(r[idField]) : 'sense-fitxa:'+(r[nomField]||'');
+    if(!groups[key]) groups[key] = { id:r[idField], nomFallback:r[nomField], rows:[] };
+    groups[key].rows.push(r);
+  });
+  return Object.values(groups).map(g=>{
+    const entity = entityList.find(e=>e.id===g.id);
+    const base = g.rows.reduce((s,r)=>s+Number(r.base),0);
+    const ivaImport = g.rows.reduce((s,r)=>s+Number(r.iva_import),0);
+    const irpfImport = g.rows.reduce((s,r)=>s+Number(r.irpf_import),0);
+    const total = g.rows.reduce((s,r)=>s+Number(r.total),0);
+    const ivaPcts = [...new Set(g.rows.map(r=>Number(r.iva_pct)))];
+    const irpfPcts = [...new Set(g.rows.map(r=>Number(r.irpf_pct)))];
+    return {
+      codi: entity ? (entity.codi||'—') : '—',
+      nom: entity ? entity.nom : (g.nomFallback||'—'),
+      base, ivaPct: ivaPcts.length===1 ? ivaPcts[0] : null, ivaImport,
+      irpfPct: irpfPcts.length===1 ? irpfPcts[0] : null, irpfImport, total
+    };
+  }).sort((a,b)=>a.nom.localeCompare(b.nom,'ca'));
+}
+
+function renderResumTable(tbodyId, data){
+  const tbody = document.getElementById(tbodyId);
+  if(!data.length){ tbody.innerHTML = '<tr><td colspan="8" class="empty">Cap factura en aquest període.</td></tr>'; return; }
+  let sBase=0, sIva=0, sIrpf=0, sTotal=0;
+  const rows = data.map(d=>{
+    sBase+=d.base; sIva+=d.ivaImport; sIrpf+=d.irpfImport; sTotal+=d.total;
+    return `<tr>
+      <td>${d.codi}</td><td>${d.nom}</td>
+      <td class="num">${fmtMoney(d.base)}</td>
+      <td class="num">${d.ivaPct!=null ? d.ivaPct+'%' : '—'}</td>
+      <td class="num">${fmtMoney(d.ivaImport)}</td>
+      <td class="num">${d.irpfPct!=null ? d.irpfPct+'%' : '—'}</td>
+      <td class="num">${fmtMoney(d.irpfImport)}</td>
+      <td class="num"><strong>${fmtMoney(d.total)}</strong></td>
+    </tr>`;
+  }).join('');
+  const totals = `<tr class="total">
+    <td colspan="2">Total (${data.length})</td>
+    <td class="num">${fmtMoney(sBase)}</td>
+    <td></td>
+    <td class="num">${fmtMoney(sIva)}</td>
+    <td></td>
+    <td class="num">${fmtMoney(sIrpf)}</td>
+    <td class="num">${fmtMoney(sTotal)}</td>
+  </tr>`;
+  tbody.innerHTML = rows + totals;
+}
+
+function renderLlistats(){
+  const cliDesde = document.getElementById('ll-cli-desde').value;
+  const cliFinsa = document.getElementById('ll-cli-finsa').value;
+  const cliRows = emeses.filter(r=>(!cliDesde || r.data>=cliDesde) && (!cliFinsa || r.data<=cliFinsa));
+  renderResumTable('tbl-resum-clients', aggregatePerEntity(cliRows, 'client_id', 'client', clients));
+
+  const provDesde = document.getElementById('ll-prov-desde').value;
+  const provFinsa = document.getElementById('ll-prov-finsa').value;
+  const provRows = rebudes.filter(r=>(!provDesde || r.data>=provDesde) && (!provFinsa || r.data<=provFinsa));
+  renderResumTable('tbl-resum-proveidors', aggregatePerEntity(provRows, 'proveidor_id', 'proveidor', proveidors));
+}
+
+function imprimirLlistat(which){
+  const desde = document.getElementById('ll-'+which+'-desde').value;
+  const finsa = document.getElementById('ll-'+which+'-finsa').value;
+  const parts = [];
+  if(desde) parts.push('Des de: '+fmtDate(desde));
+  if(finsa) parts.push('Fins a: '+fmtDate(finsa));
+  document.getElementById('print-filtre-llistats').textContent =
+    (which==='cli' ? 'Resum per client' : 'Resum per proveïdor') + ' — ' +
+    (parts.length ? parts.join(' · ') : 'Tot el període') +
+    ' — generat el '+fmtDate(new Date().toISOString().slice(0,10));
+  window.print();
+}
+
+function loadXLSX(){
+  if(window.XLSX) return Promise.resolve();
+  if(xlsxLoading) return xlsxLoading;
+  xlsxLoading = new Promise((resolve,reject)=>{
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = resolve;
+    s.onerror = ()=>{ xlsxLoading=null; reject(new Error('No s\'ha pogut carregar la llibreria Excel')); };
+    document.head.appendChild(s);
+  });
+  return xlsxLoading;
+}
+
+async function exportarLlistat(which){
+  try{
+    await loadXLSX();
+    const desde = document.getElementById('ll-'+which+'-desde').value;
+    const finsa = document.getElementById('ll-'+which+'-finsa').value;
+    const rows = which==='cli'
+      ? emeses.filter(r=>(!desde || r.data>=desde) && (!finsa || r.data<=finsa))
+      : rebudes.filter(r=>(!desde || r.data>=desde) && (!finsa || r.data<=finsa));
+    const data = which==='cli'
+      ? aggregatePerEntity(rows, 'client_id', 'client', clients)
+      : aggregatePerEntity(rows, 'proveidor_id', 'proveidor', proveidors);
+    const header = ['Codi', which==='cli'?'Client':'Proveïdor', 'Base', 'IVA %', 'IVA', 'IRPF %', 'IRPF', 'Total'];
+    const aoa = [header, ...data.map(d=>[d.codi, d.nom, d.base, d.ivaPct??'', d.ivaImport, d.irpfPct??'', d.irpfImport, d.total])];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, which==='cli' ? 'Resum clients' : 'Resum proveïdors');
+    XLSX.writeFile(wb, 'resum-'+(which==='cli'?'clients':'proveidors')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  }catch(e){ toast('Error exportant: '+e.message,'err'); }
 }
 </script>
 </body>
