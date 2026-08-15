@@ -42,11 +42,11 @@ input[type=month]{padding:7px 10px;border:1px solid var(--border);border-radius:
 .subtabs{display:flex;gap:8px;margin-bottom:14px}
 .subtab{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted)}
 .subtab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
-.card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:18px}
-.card-hdr{padding:14px 18px;border-bottom:1px solid var(--border-light)}
+.card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);overflow:visible;margin-bottom:18px}
+.card-hdr{padding:14px 18px;border-bottom:1px solid var(--border-light);border-radius:var(--r) var(--r) 0 0}
 .card-hdr h3{font-size:14px;font-weight:700}
 table{width:100%;border-collapse:collapse;font-size:12.5px}
-thead th{background:#f8f9fa;text-align:right;padding:8px 10px;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
+thead th{background:#f8f9fa;text-align:right;padding:8px 10px;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:1}
 thead th:first-child,tbody td:first-child{text-align:left}
 tbody td{padding:7px 10px;border-bottom:1px solid var(--border-light);text-align:right;white-space:nowrap}
 tbody tr.total td{font-weight:800;border-top:2px solid var(--border)}
