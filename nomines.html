@@ -121,13 +121,13 @@ tbody tr:hover{background:var(--blue-light)}
         <option value="pagat">Pagades</option>
         <option value="pendent">Pendents</option>
       </select>
-      <input type="text" id="f-cerca" placeholder="Cerca empleat..." oninput="render()">
+      <input type="text" id="f-cerca" placeholder="Cerca codi, empleat o DNI..." oninput="render()">
       <button class="btn btn-primary" onclick="openModal()">+ Nova nòmina</button>
     </div>
     <div class="card">
       <table>
         <thead><tr>
-          <th>Data</th><th>Empleat</th>
+          <th>Codi</th><th>Data</th><th>Empleat</th>
           <th class="num">Brut</th><th class="num">SS Trab</th><th class="num">SS empresa</th><th class="num">IRPF</th><th class="num">Net</th>
           <th>Estat</th><th>Pagament</th><th></th>
         </tr></thead>
@@ -145,6 +145,10 @@ tbody tr:hover{background:var(--blue-light)}
     <div class="modal-hdr"><h3 id="modal-title">Nova nòmina</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
       <input type="hidden" id="m-id">
+      <div class="fg-row">
+        <div class="fg"><label>Codi</label><input type="text" id="m-codi"></div>
+        <div class="fg"><label>DNI/NIE</label><input type="text" id="m-dni"></div>
+      </div>
       <div class="fg-row">
         <div class="fg"><label>Data</label><input type="date" id="m-data"></div>
         <div class="fg"><label>Empleat</label><input type="text" id="m-empleat"></div>
@@ -210,7 +214,7 @@ function render(){
     if(any && !r.data.startsWith(any)) return false;
     if(estat==='pagat' && !r.pagat) return false;
     if(estat==='pendent' && r.pagat) return false;
-    if(cerca && !(r.empleat||'').toLowerCase().includes(cerca)) return false;
+    if(cerca && !((r.empleat||'')+(r.codi||'')+(r.dni||'')).toLowerCase().includes(cerca)) return false;
     return true;
   });
 
@@ -225,6 +229,7 @@ function render(){
   document.getElementById('empty').style.display = filtered.length ? 'none':'block';
   tbody.innerHTML = filtered.map(r=>`
     <tr>
+      <td>${r.codi||'—'}</td>
       <td>${fmtDate(r.data)}</td>
       <td>${r.empleat||''}</td>
       <td class="num">${fmtMoney(r.import_brut)}</td>
@@ -259,6 +264,8 @@ function openModal(id){
   const r = id ? rows.find(x=>x.id===id) : null;
   document.getElementById('modal-title').textContent = r ? 'Editar nòmina' : 'Nova nòmina';
   document.getElementById('m-id').value = r ? r.id : '';
+  document.getElementById('m-codi').value = r ? (r.codi||'') : '';
+  document.getElementById('m-dni').value = r ? (r.dni||'') : '';
   document.getElementById('m-data').value = r ? r.data : todayStr();
   document.getElementById('m-empleat').value = r ? (r.empleat||'') : '';
   document.getElementById('m-brut').value = r ? r.import_brut : '';
@@ -303,6 +310,8 @@ async function saveNomina(){
   const ss_empresa = Number(document.getElementById('m-ss').value)||0;
   const irpf = Number(document.getElementById('m-irpf').value)||0;
   const data = {
+    codi: document.getElementById('m-codi').value.trim() || null,
+    dni: document.getElementById('m-dni').value.trim() || null,
     data: document.getElementById('m-data').value,
     empleat: document.getElementById('m-empleat').value.trim(),
     import_brut, ss_trab, ss_empresa, irpf,
