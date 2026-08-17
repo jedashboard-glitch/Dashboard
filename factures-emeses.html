@@ -59,6 +59,8 @@ tbody tr.void{opacity:.55}
 .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
 .badge.ok{background:var(--green-bg);color:var(--green-txt)}
 .badge.pend{background:var(--amber-bg);color:var(--amber-txt)}
+.badge.notes{background:var(--blue);color:#fff;cursor:pointer;margin-left:6px}
+.badge.notes:hover{background:var(--blue-mid)}
 .badge.void{background:var(--grey-bg);color:var(--grey-txt)}
 .row-act{display:flex;gap:6px}
 .icon-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:3px 6px;border-radius:4px}
@@ -221,6 +223,13 @@ tbody tr.void{opacity:.55}
   </div>
 </div>
 
+<div class="modal-bg" id="note-modal-bg" onclick="if(event.target===this) closeNote()">
+  <div class="modal" style="width:360px">
+    <div class="modal-hdr"><h3>Nota</h3><button class="icon-btn" onclick="closeNote()">✕</button></div>
+    <div class="modal-body" style="max-height:50vh;overflow-y:auto;white-space:pre-wrap" id="note-content"></div>
+  </div>
+</div>
+
 <script src="js/neon-client.js"></script>
 <script>
 let rows = [];
@@ -353,7 +362,7 @@ function render(){
       <td>${r.client||''}</td>
       <td>${r.num_factura||'—'}</td>
       <td>${fmtDate(r.data)}</td>
-      <td>${r.concepte||''}</td>
+      <td>${r.concepte||''}${r.notes?` <span class="badge notes no-print" onclick="showNote(${r.id})" title="Veure nota">NOTES</span>`:''}</td>
       ${numCell(r.base)}
       <td class="num">${r.iva_pct}%</td>
       ${numCell(r.iva_import)}
@@ -471,6 +480,13 @@ function duplicarFactura(id){
 }
 
 function closeModal(){ document.getElementById('modal-bg').classList.remove('show'); }
+function showNote(id){
+  const r = rows.find(x=>x.id===id);
+  if(!r || !r.notes) return;
+  document.getElementById('note-content').textContent = r.notes;
+  document.getElementById('note-modal-bg').classList.add('show');
+}
+function closeNote(){ document.getElementById('note-modal-bg').classList.remove('show'); }
 
 async function saveFactura(){
   const id = document.getElementById('m-id').value;

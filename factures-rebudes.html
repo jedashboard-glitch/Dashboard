@@ -66,6 +66,8 @@ tbody tr.void{opacity:.55}
 .badge.fix{background:var(--blue-light);color:var(--blue)}
 .badge.var{background:#f3e8ff;color:#7c3aed}
 .badge.void{background:var(--grey-bg);color:var(--grey-txt)}
+.badge.notes{background:var(--blue);color:#fff;cursor:pointer;margin-left:6px}
+.badge.notes:hover{background:var(--blue-mid)}
 .row-act{display:flex;gap:6px}
 .icon-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:3px 6px;border-radius:4px}
 .icon-btn:hover{background:#eee}
@@ -236,6 +238,13 @@ tbody tr.void{opacity:.55}
       <button class="btn btn-secondary" onclick="closeModal()">Cancel·lar</button>
       <button class="btn btn-primary" onclick="saveFactura()">Desar</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="note-modal-bg" onclick="if(event.target===this) closeNote()">
+  <div class="modal" style="width:360px">
+    <div class="modal-hdr"><h3>Nota</h3><button class="icon-btn" onclick="closeNote()">✕</button></div>
+    <div class="modal-body" style="max-height:50vh;overflow-y:auto;white-space:pre-wrap" id="note-content"></div>
   </div>
 </div>
 
@@ -424,7 +433,7 @@ function render(){
       <td>${r.num_factura||'—'}</td>
       <td>${r.numero_serie||'—'}</td>
       <td>${fmtDate(r.data)}</td>
-      <td>${r.concepte||''}</td>
+      <td>${r.concepte||''}${r.notes?` <span class="badge notes no-print" onclick="showNote(${r.id})" title="Veure nota">NOTES</span>`:''}</td>
       ${numCell(r.base)}
       <td class="num">${r.iva_pct}%</td>
       ${numCell(r.iva_import)}
@@ -581,6 +590,13 @@ function afegirLiniaIva(id){
 }
 
 function closeModal(){ document.getElementById('modal-bg').classList.remove('show'); }
+function showNote(id){
+  const r = rows.find(x=>x.id===id);
+  if(!r || !r.notes) return;
+  document.getElementById('note-content').textContent = r.notes;
+  document.getElementById('note-modal-bg').classList.add('show');
+}
+function closeNote(){ document.getElementById('note-modal-bg').classList.remove('show'); }
 
 // Número de sèrie intern: {mes}{seqüencial 4 xifres}, reiniciat cada mes/any.
 // Independent del "Núm. factura" (el número del proveïdor, lliure).

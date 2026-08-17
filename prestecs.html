@@ -49,6 +49,8 @@ tbody tr:hover{background:var(--blue-light)}
 .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
 .badge.ok{background:var(--green-bg);color:var(--green-txt)}
 .badge.pend{background:var(--amber-bg);color:var(--amber-txt)}
+.badge.notes{background:var(--blue);color:#fff;cursor:pointer;margin-left:6px}
+.badge.notes:hover{background:var(--blue-mid)}
 .progress{width:100px;height:6px;background:var(--border-light);border-radius:4px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px}
 .progress-bar{height:100%;background:var(--green)}
 .row-act{display:flex;gap:6px}
@@ -183,6 +185,13 @@ tbody tr:hover{background:var(--blue-light)}
   </div>
 </div>
 
+<div class="modal-bg" id="note-modal-bg" onclick="if(event.target===this) closeNote()">
+  <div class="modal" style="width:360px">
+    <div class="modal-hdr"><h3>Nota</h3><button class="icon-btn" onclick="closeNote()">✕</button></div>
+    <div class="modal-body" style="max-height:50vh;overflow-y:auto;white-space:pre-wrap" id="note-content"></div>
+  </div>
+</div>
+
 <script src="js/neon-client.js"></script>
 <script>
 let prestecsRows = [];
@@ -229,7 +238,7 @@ function render(){
     const pagades = qs.filter(q=>q.pagat).length;
     const pct = qs.length ? Math.round(pagades/qs.length*100) : 0;
     return `<tr>
-      <td>${p.nom||''}</td>
+      <td>${p.nom||''}${p.notes?` <span class="badge notes" onclick="showNote(${p.id})" title="Veure nota">NOTES</span>`:''}</td>
       <td>${p.entitat||''}</td>
       <td class="num">${fmtMoney(p.capital_inicial)}</td>
       <td>${fmtDate(p.data_inici)}</td>
@@ -262,6 +271,13 @@ function openModal(id){
   document.getElementById('modal-bg').classList.add('show');
 }
 function closeModal(){ document.getElementById('modal-bg').classList.remove('show'); }
+function showNote(id){
+  const r = prestecsRows.find(x=>x.id===id);
+  if(!r || !r.notes) return;
+  document.getElementById('note-content').textContent = r.notes;
+  document.getElementById('note-modal-bg').classList.add('show');
+}
+function closeNote(){ document.getElementById('note-modal-bg').classList.remove('show'); }
 
 function duplicarPrestec(id){
   const src = prestecsRows.find(x=>x.id===id);

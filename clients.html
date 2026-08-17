@@ -52,6 +52,8 @@ tbody tr:hover{background:var(--blue-light)}
 .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
 .badge.ok{background:var(--green-bg);color:var(--green-txt)}
 .badge.off{background:var(--grey-bg);color:var(--grey-txt)}
+.badge.notes{background:var(--blue);color:#fff;cursor:pointer;margin-left:6px}
+.badge.notes:hover{background:var(--blue-mid)}
 .row-act{display:flex;gap:6px}
 .icon-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:3px 6px;border-radius:4px}
 .icon-btn:hover{background:#eee}
@@ -182,6 +184,13 @@ tbody tr:hover{background:var(--blue-light)}
   </div>
 </div>
 
+<div class="modal-bg" id="note-modal-bg" onclick="if(event.target===this) closeNote()">
+  <div class="modal" style="width:360px">
+    <div class="modal-hdr"><h3>Nota</h3><button class="icon-btn" onclick="closeNote()">✕</button></div>
+    <div class="modal-body" style="max-height:50vh;overflow-y:auto;white-space:pre-wrap" id="note-content"></div>
+  </div>
+</div>
+
 <script src="js/neon-client.js"></script>
 <script>
 let rows = [];
@@ -235,7 +244,7 @@ function render(){
     const s = statsFor(r.id);
     return `<tr>
       <td>${r.codi||'—'}</td>
-      <td><strong>${r.nom||''}</strong></td>
+      <td><strong>${r.nom||''}</strong>${r.notes?` <span class="badge notes" onclick="showNote(${r.id})" title="Veure nota">NOTES</span>`:''}</td>
       <td>${r.nif||'—'}</td>
       <td style="font-size:12px">${[r.telefon,r.email].filter(Boolean).join(' · ')||'—'}</td>
       <td class="num">${r.iva_pct??21}%</td>
@@ -287,6 +296,13 @@ function openModal(id){
   document.getElementById('modal-bg').classList.add('show');
 }
 function closeModal(){ document.getElementById('modal-bg').classList.remove('show'); curId=null; }
+function showNote(id){
+  const r = rows.find(x=>x.id===id);
+  if(!r || !r.notes) return;
+  document.getElementById('note-content').textContent = r.notes;
+  document.getElementById('note-modal-bg').classList.add('show');
+}
+function closeNote(){ document.getElementById('note-modal-bg').classList.remove('show'); }
 
 function veureFactures(){
   if(curId) location.href = 'factures-emeses.html?client_id='+curId;
