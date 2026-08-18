@@ -1276,8 +1276,9 @@ function previsionsForMonth(year, month){
   return items;
 }
 
-// Separa una llista ja filtrada a pendents en els items que cauen exactament
-// al mes/any demanat i, si includeVencuts, els que son d'abans (vençuts).
+// Separa una llista (sencera, no nomes pendents) en els items que cauen
+// exactament al mes/any demanat (pagats o no) i, si includeVencuts, els
+// que son d'abans i encara pendents (vençuts).
 function splitMesVencut(rows, dateFn, year, month, includeVencuts){
   const inMonth = [], vencuts = [];
   rows.forEach(r=>{
@@ -1285,16 +1286,16 @@ function splitMesVencut(rows, dateFn, year, month, includeVencuts){
     if(!d) return;
     const ry = Number(d.slice(0,4)), rm = Number(d.slice(5,7))-1;
     if(ry===year && rm===month) inMonth.push({ row:r, dia:Number(d.slice(8,10)) });
-    else if(includeVencuts && (ry<year || (ry===year && rm<month))) vencuts.push({ row:r, data:d });
+    else if(includeVencuts && !r.pagat && (ry<year || (ry===year && rm<month))) vencuts.push({ row:r, data:d });
   });
   return { inMonth, vencuts };
 }
 
-async function marcarPagatPanel(table, id, localArr){
+async function togglePagatPanel(table, id, localArr, checked){
   try{
-    await sbPatch(table, id, { pagat:true, data_pagament: todayStr() });
+    await sbPatch(table, id, { pagat:checked, data_pagament: checked ? todayStr() : null });
     const row = localArr.find(x=>x.id===id);
-    if(row){ row.pagat=true; row.data_pagament=todayStr(); }
+    if(row){ row.pagat=checked; row.data_pagament = checked ? todayStr() : null; }
     renderAll();
   }catch(e){ toast('Error desant: '+e.message,'err'); }
 }
@@ -1312,23 +1313,26 @@ function isSSPagatPeriode(any_liquidacio, mes){
 function isIrpfPagatPeriode(any_liquidacio, trimestre){
   return irpfPagaments.some(p=>p.any_liquidacio===any_liquidacio && p.trimestre===trimestre && p.pagat);
 }
-async function toggleIvaPagatPeriode(any_liquidacio, trimestre){
+async function toggleIvaPagatPeriode(any_liquidacio, trimestre, pagat){
   try{
-    await sbPost('iva_pagaments', { any_liquidacio, trimestre, pagat:true, data_pagament:todayStr() });
+    if(pagat) await sbPost('iva_pagaments', { any_liquidacio, trimestre, pagat:true, data_pagament:todayStr() });
+    else await sbDelWhereCompound('iva_pagaments', { any_liquidacio, trimestre });
     ivaPagaments = await sbGet('iva_pagaments','select=*');
     renderAll();
   }catch(e){ toast('Error desant: '+e.message,'err'); }
 }
-async function toggleSSPagatPeriode(any_liquidacio, mes){
+async function toggleSSPagatPeriode(any_liquidacio, mes, pagat){
   try{
-    await sbPost('ss_pagaments', { any_liquidacio, mes, pagat:true, data_pagament:todayStr() });
+    if(pagat) await sbPost('ss_pagaments', { any_liquidacio, mes, pagat:true, data_pagament:todayStr() });
+    else await sbDelWhereCompound('ss_pagaments', { any_liquidacio, mes });
     ssPagaments = await sbGet('ss_pagaments','select=*');
     renderAll();
   }catch(e){ toast('Error desant: '+e.message,'err'); }
 }
-async function toggleIrpfPagatPeriode(any_liquidacio, trimestre){
+async function toggleIrpfPagatPeriode(any_liquidacio, trimestre, pagat){
   try{
-    await sbPost('irpf_pagaments', { any_liquidacio, trimestre, pagat:true, data_pagament:todayStr() });
+    if(pagat) await sbPost('irpf_pagaments', { any_liquidacio, trimestre, pagat:true, data_pagament:todayStr() });
+    else await sbDelWhereCompound('irpf_pagaments', { any_liquidacio, trimestre });
     irpfPagaments = await sbGet('irpf_pagaments','select=*');
     renderAll();
   }catch(e){ toast('Error desant: '+e.message,'err'); }
@@ -1336,78 +1340,94 @@ async function toggleIrpfPagatPeriode(any_liquidacio, trimestre){
 
 const SECCIO_CAT = { proveidors:'💳 Proveïdors', hisenda:'🏛️ Hisenda', personal:'👥 Personal', financament:'🏦 Finançament' };
 
+// Cache del darrer renderPagaments(), perque imprimirPagaments/exportarPagaments
+// puguin llegir exactament el que hi ha pintat sense recalcular-ho.
+let pagItemsMes = [], pagItemsVencuts = [];
+
 function renderPagaments(){
   const isRealAvui = pagY===new Date().getFullYear() && pagM===new Date().getMonth();
   const monthInputVal = pagY+'-'+String(pagM+1).padStart(2,'0');
   const diaFix = pagM===1 ? 28 : 30;
 
-  const provSplit = splitMesVencut(rebudes.filter(r=>!r.pagat), r=>r.data_termini||r.data, pagY, pagM, isRealAvui);
-  const nomSplit = splitMesVencut(nomines.filter(r=>!r.pagat), r=>r.data, pagY, pagM, isRealAvui);
-  const quotesSplit = splitMesVencut(quotes.filter(r=>!r.pagat), r=>r.data_prevista, pagY, pagM, isRealAvui);
+  const provSplit = splitMesVencut(rebudes, r=>r.data_termini||r.data, pagY, pagM, isRealAvui);
+  const nomSplit = splitMesVencut(nomines, r=>r.data, pagY, pagM, isRealAvui);
+  const quotesSplit = splitMesVencut(quotes, r=>r.data_prevista, pagY, pagM, isRealAvui);
 
   const itemsMes = [];
   provSplit.inMonth.forEach(({row,dia})=> itemsMes.push({
-    dia, cat:'💳 Proveïdors', concepte:(row.proveidor||'—')+(row.num_factura?' · '+row.num_factura:''), import:Number(row.total),
-    accio:`<input type="checkbox" onchange="marcarPagatPanel('factures_rebudes',${row.id},rebudes)">`
+    dia, cat:'💳 Proveïdors', concepte:(row.proveidor||'—')+(row.num_factura?' · '+row.num_factura:''), import:Number(row.total), pagat:!!row.pagat,
+    accio:`<input type="checkbox" ${row.pagat?'checked':''} onchange="togglePagatPanel('factures_rebudes',${row.id},rebudes,this.checked)">`
   }));
   nomSplit.inMonth.forEach(({row})=> itemsMes.push({
-    dia:diaFix, cat:'👥 Personal', concepte:'Nòmina — '+(row.empleat||'—'), import:Number(row.import_net),
-    accio:`<input type="checkbox" onchange="marcarPagatPanel('nomines',${row.id},nomines)">`
+    dia:diaFix, cat:'👥 Personal', concepte:'Nòmina — '+(row.empleat||'—'), import:Number(row.import_net), pagat:!!row.pagat,
+    accio:`<input type="checkbox" ${row.pagat?'checked':''} onchange="togglePagatPanel('nomines',${row.id},nomines,this.checked)">`
   }));
   quotesSplit.inMonth.forEach(({row,dia})=> itemsMes.push({
-    dia, cat:'🏦 Finançament', concepte:'Quota — '+(prestecsById[row.prestec_id]||('Préstec #'+row.prestec_id)), import:Number(row.import_total),
-    accio:`<input type="checkbox" onchange="marcarPagatPanel('prestec_quotes',${row.id},quotes)">`
+    dia, cat:'🏦 Finançament', concepte:'Quota — '+(prestecsById[row.prestec_id]||('Préstec #'+row.prestec_id)), import:Number(row.import_total), pagat:!!row.pagat,
+    accio:`<input type="checkbox" ${row.pagat?'checked':''} onchange="togglePagatPanel('prestec_quotes',${row.id},quotes,this.checked)">`
   }));
 
   const ivaQ = quartersDeLAny(pagY).find(q=>q.payMonth===pagM && !q.ajornat && q.liquidacio>0);
-  if(ivaQ && !isIvaPagatPeriode(ivaQ.qy, ivaQ.qi)) itemsMes.push({
-    dia: pagM===0?30:20, cat:'🏛️ Hisenda', concepte:'Liquidació IVA — '+ivaQ.label, import:ivaQ.liquidacio,
-    accio:`<input type="checkbox" onchange="toggleIvaPagatPeriode(${ivaQ.qy},${ivaQ.qi})">`
-  });
-
-  const irpfQ = irpf111QuartersDeLAny(pagY).find(q=>q.payMonth===pagM && q.import>0);
-  if(irpfQ && !isIrpfPagatPeriode(irpfQ.qy, irpfQ.qi)) itemsMes.push({
-    dia: pagM===0?30:20, cat:'🏛️ Hisenda', concepte:'IRPF-111 — '+irpfQ.label, import:irpfQ.import,
-    accio:`<input type="checkbox" onchange="toggleIrpfPagatPeriode(${irpfQ.qy},${irpfQ.qi})">`
-  });
-
-  const ssM = monthsForSS(pagY).find(m=>m.payMonth===pagM);
-  if(ssM && !isSSPagatPeriode(ssM.ay, ssM.am)){
-    const ssImport = ssM.ssTrab + (ssM.ajornat?0:ssM.ssEmpresa);
-    if(ssImport>0) itemsMes.push({
-      dia:diaFix, cat:'👥 Personal', concepte:'Seguretat Social — nòmina '+ssM.label+(ssM.ajornat?' (SS empresa ajornada)':''), import:ssImport,
-      accio:`<input type="checkbox" onchange="toggleSSPagatPeriode(${ssM.ay},${ssM.am})">`
+  if(ivaQ){
+    const pagat = isIvaPagatPeriode(ivaQ.qy, ivaQ.qi);
+    itemsMes.push({
+      dia: pagM===0?30:20, cat:'🏛️ Hisenda', concepte:'Liquidació IVA — '+ivaQ.label, import:ivaQ.liquidacio, pagat,
+      accio:`<input type="checkbox" ${pagat?'checked':''} onchange="toggleIvaPagatPeriode(${ivaQ.qy},${ivaQ.qi},this.checked)">`
     });
   }
 
+  const irpfQ = irpf111QuartersDeLAny(pagY).find(q=>q.payMonth===pagM && q.import>0);
+  if(irpfQ){
+    const pagat = isIrpfPagatPeriode(irpfQ.qy, irpfQ.qi);
+    itemsMes.push({
+      dia: pagM===0?30:20, cat:'🏛️ Hisenda', concepte:'IRPF-111 — '+irpfQ.label, import:irpfQ.import, pagat,
+      accio:`<input type="checkbox" ${pagat?'checked':''} onchange="toggleIrpfPagatPeriode(${irpfQ.qy},${irpfQ.qi},this.checked)">`
+    });
+  }
+
+  const ssM = monthsForSS(pagY).find(m=>m.payMonth===pagM);
+  if(ssM){
+    const ssImport = ssM.ssTrab + (ssM.ajornat?0:ssM.ssEmpresa);
+    if(ssImport>0){
+      const pagat = isSSPagatPeriode(ssM.ay, ssM.am);
+      itemsMes.push({
+        dia:diaFix, cat:'👥 Personal', concepte:'Seguretat Social — nòmina '+ssM.label+(ssM.ajornat?' (SS empresa ajornada)':''), import:ssImport, pagat,
+        accio:`<input type="checkbox" ${pagat?'checked':''} onchange="toggleSSPagatPeriode(${ssM.ay},${ssM.am},this.checked)">`
+      });
+    }
+  }
+
   previsionsForMonth(pagY, pagM).filter(p=>p.tipus==='pagament').forEach(p=>{
-    itemsMes.push({ dia:p.dia, cat:SECCIO_CAT[p.seccio]||'📝 Previsió', concepte:p.etiqueta+' (previsió)', import:p.import, accio:'' });
+    itemsMes.push({ dia:p.dia, cat:SECCIO_CAT[p.seccio]||'📝 Previsió', concepte:p.etiqueta+' (previsió)', import:p.import, pagat:false, accio:'—' });
   });
 
   itemsMes.sort((a,b)=>a.dia-b.dia);
 
   const itemsVencuts = [];
   provSplit.vencuts.forEach(({row,data})=> itemsVencuts.push({
-    data, cat:'💳 Proveïdors', concepte:(row.proveidor||'—')+(row.num_factura?' · '+row.num_factura:''), import:Number(row.total),
-    accio:`<input type="checkbox" onchange="marcarPagatPanel('factures_rebudes',${row.id},rebudes)">`
+    data, cat:'💳 Proveïdors', concepte:(row.proveidor||'—')+(row.num_factura?' · '+row.num_factura:''), import:Number(row.total), pagat:false,
+    accio:`<input type="checkbox" onchange="togglePagatPanel('factures_rebudes',${row.id},rebudes,this.checked)">`
   }));
   nomSplit.vencuts.forEach(({row,data})=> itemsVencuts.push({
-    data, cat:'👥 Personal', concepte:'Nòmina — '+(row.empleat||'—'), import:Number(row.import_net),
-    accio:`<input type="checkbox" onchange="marcarPagatPanel('nomines',${row.id},nomines)">`
+    data, cat:'👥 Personal', concepte:'Nòmina — '+(row.empleat||'—'), import:Number(row.import_net), pagat:false,
+    accio:`<input type="checkbox" onchange="togglePagatPanel('nomines',${row.id},nomines,this.checked)">`
   }));
   quotesSplit.vencuts.forEach(({row,data})=> itemsVencuts.push({
-    data, cat:'🏦 Finançament', concepte:'Quota — '+(prestecsById[row.prestec_id]||('Préstec #'+row.prestec_id)), import:Number(row.import_total),
-    accio:`<input type="checkbox" onchange="marcarPagatPanel('prestec_quotes',${row.id},quotes)">`
+    data, cat:'🏦 Finançament', concepte:'Quota — '+(prestecsById[row.prestec_id]||('Préstec #'+row.prestec_id)), import:Number(row.import_total), pagat:false,
+    accio:`<input type="checkbox" onchange="togglePagatPanel('prestec_quotes',${row.id},quotes,this.checked)">`
   }));
   itemsVencuts.sort((a,b)=> a.data<b.data?-1:(a.data>b.data?1:0));
 
-  const totalMes = sum(itemsMes.map(i=>i.import));
+  pagItemsMes = itemsMes;
+  pagItemsVencuts = itemsVencuts;
+
+  const totalMes = sum(itemsMes.filter(i=>!i.pagat).map(i=>i.import));
   const totalVencuts = sum(itemsVencuts.map(i=>i.import));
 
   const rowHtmlMes = itemsMes.map(i=>`
-    <tr><td>${i.dia}</td><td>${i.cat}</td><td>${i.concepte}</td><td class="num">${fmtMoney(i.import)}</td><td>${i.accio||'—'}</td></tr>`).join('');
+    <tr${i.pagat?' style="opacity:.5;text-decoration:line-through"':''}><td>${i.dia}</td><td>${i.cat}</td><td>${i.concepte}</td><td class="num">${fmtMoney(i.import)}</td><td>${i.accio}</td></tr>`).join('');
   const rowHtmlVencuts = itemsVencuts.map(i=>`
-    <tr><td class="neg">${fmtDate(i.data)}</td><td>${i.cat}</td><td>${i.concepte}</td><td class="num neg">${fmtMoney(i.import)}</td><td>${i.accio||'—'}</td></tr>`).join('');
+    <tr><td class="neg">${fmtDate(i.data)}</td><td>${i.cat}</td><td>${i.concepte}</td><td class="num neg">${fmtMoney(i.import)}</td><td>${i.accio}</td></tr>`).join('');
 
   document.getElementById('tab-pagaments').innerHTML = `
     <div class="toolbar">
@@ -1416,9 +1436,12 @@ function renderPagaments(){
       <input type="month" value="${monthInputVal}" onchange="setPagMonthFromInput(this.value)">
       <button class="btn btn-secondary" onclick="movePagMonth(1)">▶</button>
       <button class="btn btn-secondary" onclick="resetPagMonth()">Avui</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-secondary no-print" onclick="imprimirPagaments()">🖨️ Imprimir</button>
+      <button class="btn btn-secondary no-print" onclick="exportarPagaments()">📊 Exportar</button>
     </div>
     <div style="display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap">
-      <div class="kpi r" style="flex:1;min-width:220px"><div class="kpi-label">Total a pagar — ${MESOS[pagM]} ${pagY}</div><div class="kpi-val">${fmtMoney(totalMes)}</div></div>
+      <div class="kpi r" style="flex:1;min-width:220px"><div class="kpi-label">Total pendent — ${MESOS[pagM]} ${pagY}</div><div class="kpi-val">${fmtMoney(totalMes)}</div></div>
       ${itemsVencuts.length ? `<div class="kpi a" style="flex:1;min-width:220px"><div class="kpi-label">Vençuts pendents</div><div class="kpi-val">${fmtMoney(totalVencuts)}</div></div>` : ''}
     </div>
     ${itemsVencuts.length ? `
@@ -1436,11 +1459,31 @@ function renderPagaments(){
       <div class="tbl-scroll">
       <table class="prev-tbl">
         <thead><tr><th>Dia</th><th>Categoria</th><th>Concepte</th><th class="num">Import</th><th>Pagat</th></tr></thead>
-        <tbody>${rowHtmlMes || '<tr><td colspan="5" class="empty">Cap pagament pendent aquest mes.</td></tr>'}</tbody>
+        <tbody>${rowHtmlMes || '<tr><td colspan="5" class="empty">Cap pagament aquest mes.</td></tr>'}</tbody>
       </table>
       </div>
     </div>
   `;
+}
+
+function imprimirPagaments(){
+  document.getElementById('print-filtre-llistats').textContent =
+    'Pagaments — '+MESOS[pagM]+' '+pagY+' — generat el '+fmtDate(new Date().toISOString().slice(0,10));
+  window.print();
+}
+
+async function exportarPagaments(){
+  try{
+    await loadXLSX();
+    const vencutsRows = pagItemsVencuts.map(i=>[fmtDate(i.data), i.cat, i.concepte, i.import, i.pagat?'Sí':'No']);
+    const mesRows = pagItemsMes.map(i=>[fmtDate(pagY+'-'+String(pagM+1).padStart(2,'0')+'-'+String(i.dia).padStart(2,'0')), i.cat, i.concepte, i.import, i.pagat?'Sí':'No']);
+    const header = ['Data','Categoria','Concepte','Import','Pagat'];
+    const aoa = [header, ...vencutsRows, ...mesRows];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Pagaments');
+    XLSX.writeFile(wb, 'pagaments-'+pagY+'-'+String(pagM+1).padStart(2,'0')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  }catch(e){ toast('Error exportant: '+e.message,'err'); }
 }
 </script>
 </body>
