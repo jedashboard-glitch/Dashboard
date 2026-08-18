@@ -155,6 +155,7 @@ tbody tr.result td.neg,tbody tr.total td.neg{color:var(--red-txt)}
     <div class="tabs">
       <div class="tab active" data-tab="pl" onclick="showTab('pl')">Compte de resultats (P&amp;L)</div>
       <div class="tab" data-tab="tresoreria" onclick="showTab('tresoreria')">Tresoreria</div>
+      <div class="tab" data-tab="pagaments" onclick="showTab('pagaments')">Pagaments</div>
       <div class="tab" data-tab="puntmort" onclick="showTab('puntmort')">Punt mort</div>
       <div class="tab" data-tab="resum" onclick="showTab('resum')">Resum per client/proveïdor</div>
       <div class="tab" data-tab="vendes" onclick="showTab('vendes')">Vendes clients/proveïdors</div>
@@ -162,6 +163,7 @@ tbody tr.result td.neg,tbody tr.total td.neg{color:var(--red-txt)}
 
     <div id="tab-pl"></div>
     <div id="tab-tresoreria" style="display:none"></div>
+    <div id="tab-pagaments" style="display:none"></div>
     <div id="tab-puntmort" style="display:none"></div>
     <div id="tab-resum" style="display:none">
       <div class="card">
@@ -301,6 +303,7 @@ tbody tr.result td.neg,tbody tr.total td.neg{color:var(--red-txt)}
 <script>
 const MESOS = ['Gen','Feb','Mar','Abr','Mai','Jun','Jul','Ago','Set','Oct','Nov','Des'];
 let emeses=[], rebudes=[], nomines=[], quotes=[], previsions=[], ajornaments=[], ssAjornaments=[], saldoInicials=[], clients=[], proveidors=[];
+let prestecsById = {};
 let xlsxLoading = null;
 
 if(requireAuth()) load();
@@ -314,8 +317,8 @@ function toast(msg,type='inf'){
 
 async function load(){
   try{
-    let rebudesRaw;
-    [emeses, rebudesRaw, nomines, quotes, previsions, ajornaments, ssAjornaments, saldoInicials, clients, proveidors] = await Promise.all([
+    let rebudesRaw, prestecsRaw;
+    [emeses, rebudesRaw, nomines, quotes, previsions, ajornaments, ssAjornaments, saldoInicials, clients, proveidors, prestecsRaw] = await Promise.all([
       sbGet('factures_emeses','select=*'),
       sbGet('factures_rebudes','select=*'),
       sbGet('nomines','select=*'),
@@ -325,11 +328,13 @@ async function load(){
       sbGet('ss_ajornaments','select=*'),
       sbGet('saldo_inicial_tresoreria','select=*'),
       sbGet('clients','select=id,codi,nom&order=nom.asc'),
-      sbGet('proveidors','select=id,codi,nom&order=nom.asc')
+      sbGet('proveidors','select=id,codi,nom&order=nom.asc'),
+      sbGet('prestecs','select=id,nom')
     ]);
     // Les factures anul·lades no compten en cap report (igual que a la resta del Dashboard).
     emeses = emeses.filter(r=>r.estat!=='anullada');
     rebudes = rebudesRaw.filter(r=>r.estat!=='anullada');
+    prestecsById = Object.fromEntries(prestecsRaw.map(p=>[p.id, p.nom]));
     fillAnys();
     populateEtiquetesDatalist();
     renderAll();
@@ -346,7 +351,7 @@ function fillAnys(){
 }
 
 function showTab(tab){
-  ['pl','tresoreria','puntmort','resum','vendes'].forEach(t=>{
+  ['pl','tresoreria','pagaments','puntmort','resum','vendes'].forEach(t=>{
     document.getElementById('tab-'+t).style.display = t===tab ? 'block':'none';
     document.querySelector(`.tab[data-tab="${t}"]`).classList.toggle('active', t===tab);
   });
@@ -536,6 +541,7 @@ function renderAll(){
   const year = document.getElementById('f-any').value;
   renderPL(year);
   renderTresoreria();
+  renderPagaments();
   renderPuntMort(year);
   renderResum();
   renderVendes();
@@ -1202,6 +1208,191 @@ async function exportarVendes(which){
     XLSX.utils.book_append_sheet(wb, ws, isClient ? 'Vendes clients' : 'Vendes proveïdors');
     XLSX.writeFile(wb, 'vendes-'+(isClient?'clients':'proveidors')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
   }catch(e){ toast('Error exportant: '+e.message,'err'); }
+}
+
+// ---- Pagaments: checklist mensual d'obligacions pendents ----
+
+let pagY = new Date().getFullYear();
+let pagM = new Date().getMonth();
+
+function movePagMonth(deltaMesos){
+  const total = pagY*12 + pagM + deltaMesos;
+  pagY = Math.floor(total/12);
+  pagM = ((total%12)+12)%12;
+  renderPagaments();
+}
+function resetPagMonth(){
+  pagY = new Date().getFullYear();
+  pagM = new Date().getMonth();
+  renderPagaments();
+}
+function setPagMonthFromInput(val){
+  if(!val) return;
+  const [y,m] = val.split('-').map(Number);
+  pagY = y; pagM = m-1;
+  renderPagaments();
+}
+
+// Mateixos trimestres que quartersDeLAny (T4 any anterior->gener, T1->abril,
+// T2->juliol, T3->octubre) pero per IRPF-111, que no te ajornament.
+function irpf111QuartersDeLAny(year){
+  const y = Number(year);
+  const defs = [
+    { qy:y-1, qi:3, label:'T4 '+(y-1), payMonth:0 },
+    { qy:y,   qi:0, label:'T1 '+y,     payMonth:3 },
+    { qy:y,   qi:1, label:'T2 '+y,     payMonth:6 },
+    { qy:y,   qi:2, label:'T3 '+y,     payMonth:9 },
+  ];
+  return defs.map(d=>({ ...d, import: quarterSum(nomines, d.qy, d.qi, r=>Number(r.irpf)||0) }));
+}
+
+// Expandeix les previsions manuals recurrents (mateixa mecanica que
+// groupPrevisions) i retorna nomes els items puntuals del mes exacte demanat.
+function previsionsForMonth(year, month){
+  const items = [];
+  previsions.forEach(p=>{
+    if(!p.data) return;
+    const startY = Number(p.data.slice(0,4)), startM = Number(p.data.slice(5,7))-1;
+    const termini = p.termini_mesos || 1;
+    for(let i=0;i<termini;i++){
+      const totalM = startM+i;
+      const yy = startY + Math.floor(totalM/12);
+      const mm = ((totalM%12)+12)%12;
+      if(yy===year && mm===month){
+        items.push({
+          etiqueta: p.etiqueta,
+          tipus: p.tipus,
+          seccio: p.seccio || '',
+          import: Number(p.import)||0,
+          dia: p.dia_pagament || Number(p.data.slice(8,10))
+        });
+      }
+    }
+  });
+  return items;
+}
+
+// Separa una llista ja filtrada a pendents en els items que cauen exactament
+// al mes/any demanat i, si includeVencuts, els que son d'abans (vençuts).
+function splitMesVencut(rows, dateFn, year, month, includeVencuts){
+  const inMonth = [], vencuts = [];
+  rows.forEach(r=>{
+    const d = dateFn(r);
+    if(!d) return;
+    const ry = Number(d.slice(0,4)), rm = Number(d.slice(5,7))-1;
+    if(ry===year && rm===month) inMonth.push({ row:r, dia:Number(d.slice(8,10)) });
+    else if(includeVencuts && (ry<year || (ry===year && rm<month))) vencuts.push({ row:r, data:d });
+  });
+  return { inMonth, vencuts };
+}
+
+async function marcarPagatPanel(table, id, localArr){
+  try{
+    await sbPatch(table, id, { pagat:true, data_pagament: todayStr() });
+    const row = localArr.find(x=>x.id===id);
+    if(row){ row.pagat=true; row.data_pagament=todayStr(); }
+    renderAll();
+  }catch(e){ toast('Error desant: '+e.message,'err'); }
+}
+
+const SECCIO_CAT = { proveidors:'💳 Proveïdors', hisenda:'🏛️ Hisenda', personal:'👥 Personal', financament:'🏦 Finançament' };
+
+function renderPagaments(){
+  const isRealAvui = pagY===new Date().getFullYear() && pagM===new Date().getMonth();
+  const monthInputVal = pagY+'-'+String(pagM+1).padStart(2,'0');
+  const diaFix = pagM===1 ? 28 : 30;
+
+  const provSplit = splitMesVencut(rebudes.filter(r=>!r.pagat), r=>r.data_termini||r.data, pagY, pagM, isRealAvui);
+  const nomSplit = splitMesVencut(nomines.filter(r=>!r.pagat), r=>r.data, pagY, pagM, isRealAvui);
+  const quotesSplit = splitMesVencut(quotes.filter(r=>!r.pagat), r=>r.data_prevista, pagY, pagM, isRealAvui);
+
+  const itemsMes = [];
+  provSplit.inMonth.forEach(({row,dia})=> itemsMes.push({
+    dia, cat:'💳 Proveïdors', concepte:(row.proveidor||'—')+(row.num_factura?' · '+row.num_factura:''), import:Number(row.total),
+    accio:`<input type="checkbox" onchange="marcarPagatPanel('factures_rebudes',${row.id},rebudes)">`
+  }));
+  nomSplit.inMonth.forEach(({row})=> itemsMes.push({
+    dia:diaFix, cat:'👥 Personal', concepte:'Nòmina — '+(row.empleat||'—'), import:Number(row.import_net),
+    accio:`<input type="checkbox" onchange="marcarPagatPanel('nomines',${row.id},nomines)">`
+  }));
+  quotesSplit.inMonth.forEach(({row,dia})=> itemsMes.push({
+    dia, cat:'🏦 Finançament', concepte:'Quota — '+(prestecsById[row.prestec_id]||('Préstec #'+row.prestec_id)), import:Number(row.import_total),
+    accio:`<input type="checkbox" onchange="marcarPagatPanel('prestec_quotes',${row.id},quotes)">`
+  }));
+
+  const ivaQ = quartersDeLAny(pagY).find(q=>q.payMonth===pagM && !q.ajornat && q.liquidacio>0);
+  if(ivaQ) itemsMes.push({ dia: pagM===0?30:20, cat:'🏛️ Hisenda', concepte:'Liquidació IVA — '+ivaQ.label, import:ivaQ.liquidacio, accio:'' });
+
+  const irpfQ = irpf111QuartersDeLAny(pagY).find(q=>q.payMonth===pagM && q.import>0);
+  if(irpfQ) itemsMes.push({ dia: pagM===0?30:20, cat:'🏛️ Hisenda', concepte:'IRPF-111 — '+irpfQ.label, import:irpfQ.import, accio:'' });
+
+  const ssM = monthsForSS(pagY).find(m=>m.payMonth===pagM);
+  if(ssM){
+    const ssImport = ssM.ssTrab + (ssM.ajornat?0:ssM.ssEmpresa);
+    if(ssImport>0) itemsMes.push({ dia:diaFix, cat:'👥 Personal', concepte:'Seguretat Social — nòmina '+ssM.label+(ssM.ajornat?' (SS empresa ajornada)':''), import:ssImport, accio:'' });
+  }
+
+  previsionsForMonth(pagY, pagM).filter(p=>p.tipus==='pagament').forEach(p=>{
+    itemsMes.push({ dia:p.dia, cat:SECCIO_CAT[p.seccio]||'📝 Previsió', concepte:p.etiqueta+' (previsió)', import:p.import, accio:'' });
+  });
+
+  itemsMes.sort((a,b)=>a.dia-b.dia);
+
+  const itemsVencuts = [];
+  provSplit.vencuts.forEach(({row,data})=> itemsVencuts.push({
+    data, cat:'💳 Proveïdors', concepte:(row.proveidor||'—')+(row.num_factura?' · '+row.num_factura:''), import:Number(row.total),
+    accio:`<input type="checkbox" onchange="marcarPagatPanel('factures_rebudes',${row.id},rebudes)">`
+  }));
+  nomSplit.vencuts.forEach(({row,data})=> itemsVencuts.push({
+    data, cat:'👥 Personal', concepte:'Nòmina — '+(row.empleat||'—'), import:Number(row.import_net),
+    accio:`<input type="checkbox" onchange="marcarPagatPanel('nomines',${row.id},nomines)">`
+  }));
+  quotesSplit.vencuts.forEach(({row,data})=> itemsVencuts.push({
+    data, cat:'🏦 Finançament', concepte:'Quota — '+(prestecsById[row.prestec_id]||('Préstec #'+row.prestec_id)), import:Number(row.import_total),
+    accio:`<input type="checkbox" onchange="marcarPagatPanel('prestec_quotes',${row.id},quotes)">`
+  }));
+  itemsVencuts.sort((a,b)=> a.data<b.data?-1:(a.data>b.data?1:0));
+
+  const totalMes = sum(itemsMes.map(i=>i.import));
+  const totalVencuts = sum(itemsVencuts.map(i=>i.import));
+
+  const rowHtmlMes = itemsMes.map(i=>`
+    <tr><td>${i.dia}</td><td>${i.cat}</td><td>${i.concepte}</td><td class="num">${fmtMoney(i.import)}</td><td>${i.accio||'—'}</td></tr>`).join('');
+  const rowHtmlVencuts = itemsVencuts.map(i=>`
+    <tr><td class="neg">${fmtDate(i.data)}</td><td>${i.cat}</td><td>${i.concepte}</td><td class="num neg">${fmtMoney(i.import)}</td><td>${i.accio||'—'}</td></tr>`).join('');
+
+  document.getElementById('tab-pagaments').innerHTML = `
+    <div class="toolbar">
+      <span class="toolbar-label">Mes</span>
+      <button class="btn btn-secondary" onclick="movePagMonth(-1)">◀</button>
+      <input type="month" value="${monthInputVal}" onchange="setPagMonthFromInput(this.value)">
+      <button class="btn btn-secondary" onclick="movePagMonth(1)">▶</button>
+      <button class="btn btn-secondary" onclick="resetPagMonth()">Avui</button>
+    </div>
+    <div style="display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap">
+      <div class="kpi r" style="flex:1;min-width:220px"><div class="kpi-label">Total a pagar — ${MESOS[pagM]} ${pagY}</div><div class="kpi-val">${fmtMoney(totalMes)}</div></div>
+      ${itemsVencuts.length ? `<div class="kpi a" style="flex:1;min-width:220px"><div class="kpi-label">Vençuts pendents</div><div class="kpi-val">${fmtMoney(totalVencuts)}</div></div>` : ''}
+    </div>
+    ${itemsVencuts.length ? `
+    <div class="card">
+      <div class="card-hdr"><h3>⚠️ Vençuts</h3></div>
+      <div class="tbl-scroll">
+      <table class="prev-tbl">
+        <thead><tr><th>Data</th><th>Categoria</th><th>Concepte</th><th class="num">Import</th><th>Pagat</th></tr></thead>
+        <tbody>${rowHtmlVencuts}</tbody>
+      </table>
+      </div>
+    </div>` : ''}
+    <div class="card">
+      <div class="card-hdr"><h3>Pagaments de ${MESOS[pagM]} ${pagY}</h3></div>
+      <div class="tbl-scroll">
+      <table class="prev-tbl">
+        <thead><tr><th>Dia</th><th>Categoria</th><th>Concepte</th><th class="num">Import</th><th>Pagat</th></tr></thead>
+        <tbody>${rowHtmlMes || '<tr><td colspan="5" class="empty">Cap pagament pendent aquest mes.</td></tr>'}</tbody>
+      </table>
+      </div>
+    </div>
+  `;
 }
 </script>
 </body>
